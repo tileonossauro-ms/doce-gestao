@@ -10,6 +10,13 @@ export function formatNum(valor: number | null | undefined, casas = 2): string {
   return n.toLocaleString('pt-BR', { maximumFractionDigits: casas })
 }
 
+/** Formata data ISO ('YYYY-MM-DD' ou timestamptz) como 'DD/MM/AAAA' (sem sofrer fuso). */
+export function formatData(iso: string | null | undefined): string {
+  if (!iso) return '—'
+  const [y, m, d] = iso.slice(0, 10).split('-')
+  return y && m && d ? `${d}/${m}/${y}` : iso
+}
+
 /** Converte texto de input em número, aceitando vírgula OU ponto como decimal.
  *  Ex.: "0,5" e "0.5" -> 0.5; "" -> NaN. (Campos do app não usam separador de milhar.) */
 export function parseNum(texto: string): number {
