@@ -27,9 +27,16 @@ SaaS de gestão para confeiteiros caseiros. Nome oficial em todo texto visível:
 4. **Padrão único de UI nos CRUDs:** Table + Dialog (criar) + Sheet (editar) + AlertDialog (excluir) + Toast em toda ação + Skeleton no loading + empty state convidando à primeira ação.
 5. Toda rota protegida por login; sem sessão → redireciona para `/login`.
 
-## Edge Functions
-- `calcular-preco` — `{ receita_id }`: aplica a fórmula, grava `custo_direto`, `preco_sugerido`, `status='ativo'`.
-- `confirmar-pedido` — `{ pedido_id }`: cria `lancamento` tipo='entrada' com `valor = valor_total` e `pedido_id` vinculado. **Idempotente** (confirmar 2x não duplica). Reforço via **trigger** no Postgres.
+## Funções (implementadas como RPC no Postgres, por decisão do usuário — não Edge Functions)
+- `calcular_preco(p_receita_id)` — aplica a fórmula, grava `custo_direto`, `preco_sugerido`, `status='ativo'`. Retorna jsonb `{ok, ...}`.
+- `confirmar_pedido(p_pedido_id)` — cria `lancamento` tipo='entrada' com `valor = valor_total` e `pedido_id` vinculado. **Idempotente** (índice único parcial em `lancamentos(pedido_id) where tipo='entrada'`). Reforço via **trigger** `pedido_entregue_entrada`.
+  - **A partir da Fase 9**, `confirmar_pedido` também: grava `pedidos.custo_unitario_snapshot` e gera as movimentações de `consumo` de estoque (ver regras abaixo). Tudo na mesma transação e idempotente.
+
+## Regras do escopo ampliado (custo histórico, venda, estoque)
+6. **Snapshot de custo:** ao confirmar um pedido, gravar `pedidos.custo_unitario_snapshot = custo_direto / rendimento` (custo por unidade vigente da receita naquele momento). **Todo relatório de margem/lucro usa o snapshot, nunca o custo atual** — o histórico não pode mudar quando o preço de um ingrediente muda depois.
+7. **Definição de "venda"** (fixa, usada em relatórios): venda = **pedido confirmado** (com `lancamento` de entrada vinculado), datada pela **data do lançamento**. **Custo de um pedido** = `custo_unitario_snapshot × quantidade`.
+8. **Baixa de estoque na confirmação:** para cada ingrediente da receita, gerar movimentação `consumo` com `quantidade = (quantidade_na_receita ÷ rendimento) × quantidade_do_pedido` e descontar de `ingredientes.estoque_atual`. Idempotente (confirmar 2x não duplica consumo nem lançamento).
+9. **Estoque pode ficar negativo** (a confeiteira pode ter esquecido de lançar uma compra): mostrar **alerta visual**, **nunca bloquear** a venda.
 
 ## Como trabalhar
 - Trabalhar por fases (ver `docs/PROGRESSO.md`). Ao fim de cada fase: parar, resumir em 3–5 linhas, listar o que testar, aguardar OK.
