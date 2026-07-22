@@ -1,0 +1,324 @@
+import { useEffect, useState } from 'react'
+import { Loader2, Plus, Trash2, Calculator } from 'lucide-react'
+import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth'
+import { getPercentuaisPadrao } from '@/lib/config'
+import { formatBRL, parseNum } from '@/lib/format'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+
+export type Ingrediente = { id: string; nome: string; unidade: string; custo_unitario: number | null }
+export type Receita = {
+  id: string
+  nome: string
+  rendimento: number | null
+  custo_direto: number
+  pct_indireto: number
+  pct_margem: number
+  pct_taxas: number
+  preco_sugerido: number | null
+  status: string
+}
+
+type Item = { ingrediente_id: string; quantidade: string }
+type Resultado = {
+  custo_direto: number
+  custo_por_unidade: number
+  preco_sugerido: number
+  lucro_unidade: number
+}
+
+export default function ReceitaForm({
+  ingredientes,
+  receita,
+  onSaved,
+  onClose,
+  modo,
+}: {
+  ingredientes: Ingrediente[]
+  receita: Receita | null
+  onSaved: () => void
+  onClose: () => void
+  modo: 'criar' | 'editar'
+}) {
+  const { user } = useAuth()
+  const [nome, setNome] = useState(receita?.nome ?? '')
+  const [rendimento, setRendimento] = useState(receita?.rendimento?.toString() ?? '')
+  const [itens, setItens] = useState<Item[]>([])
+  const [pct, setPct] = useState(() => {
+    if (receita) {
+      return {
+        indireto: receita.pct_indireto.toString(),
+        margem: receita.pct_margem.toString(),
+        taxas: receita.pct_taxas.toString(),
+      }
+    }
+    const p = getPercentuaisPadrao()
+    return { indireto: p.indireto.toString(), margem: p.margem.toString(), taxas: p.taxas.toString() }
+  })
+  const [salvando, setSalvando] = useState(false)
+  const [calculando, setCalculando] = useState(false)
+  const [resultado, setResultado] = useState<Resultado | null>(null)
+
+  // Ao editar, carrega os ingredientes já cadastrados na receita.
+  useEffect(() => {
+    if (!receita) {
+      setItens([{ ingrediente_id: '', quantidade: '' }])
+      return
+    }
+    supabase
+      .from('receita_ingredientes')
+      .select('ingrediente_id, quantidade')
+      .eq('receita_id', receita.id)
+      .then(({ data }) => {
+        const rows = (data ?? []).map((r) => ({
+          ingrediente_id: r.ingrediente_id as string,
+          quantidade: String(r.quantidade),
+        }))
+        setItens(rows.length ? rows : [{ ingrediente_id: '', quantidade: '' }])
+      })
+  }, [receita])
+
+  function setItem(i: number, patch: Partial<Item>) {
+    setItens((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)))
+  }
+  function addItem() {
+    setItens((prev) => [...prev, { ingrediente_id: '', quantidade: '' }])
+  }
+  function removeItem(i: number) {
+    setItens((prev) => prev.filter((_, idx) => idx !== i))
+  }
+
+  const unidadeDe = (id: string) => ingredientes.find((g) => g.id === id)?.unidade ?? ''
+
+  /** Persiste receita + itens. Retorna o id, ou null em caso de erro. */
+  async function salvar(): Promise<string | null> {
+    if (!user) return null
+    if (!nome.trim()) {
+      toast.error('Dê um nome para a receita.')
+      return null
+    }
+    const rend = parseNum(rendimento)
+    const payload = {
+      user_id: user.id,
+      nome: nome.trim(),
+      rendimento: Number.isFinite(rend) ? rend : null,
+      pct_indireto: parseNum(pct.indireto) || 0,
+      pct_margem: parseNum(pct.margem) || 0,
+      pct_taxas: parseNum(pct.taxas) || 0,
+    }
+
+    let receitaId = receita?.id ?? null
+    if (receitaId) {
+      const { error } = await supabase.from('receitas').update(payload).eq('id', receitaId)
+      if (error) {
+        toast.error('Erro ao salvar: ' + error.message)
+        return null
+      }
+    } else {
+      const { data, error } = await supabase.from('receitas').insert(payload).select('id').single()
+      if (error || !data) {
+        toast.error('Erro ao salvar: ' + (error?.message ?? ''))
+        return null
+      }
+      receitaId = data.id
+    }
+
+    // Sincroniza os itens: apaga os antigos e insere os atuais válidos.
+    await supabase.from('receita_ingredientes').delete().eq('receita_id', receitaId)
+    const validos = itens
+      .filter((it) => it.ingrediente_id && Number.isFinite(parseNum(it.quantidade)))
+      .map((it) => ({
+        user_id: user.id,
+        receita_id: receitaId,
+        ingrediente_id: it.ingrediente_id,
+        quantidade: parseNum(it.quantidade),
+      }))
+    if (validos.length) {
+      const { error } = await supabase.from('receita_ingredientes').insert(validos)
+      if (error) {
+        toast.error('Erro ao salvar ingredientes: ' + error.message)
+        return null
+      }
+    }
+    return receitaId
+  }
+
+  async function handleSalvar() {
+    setSalvando(true)
+    const id = await salvar()
+    setSalvando(false)
+    if (id) {
+      toast.success(modo === 'criar' ? 'Receita criada!' : 'Receita salva!')
+      onSaved()
+      onClose()
+    }
+  }
+
+  async function handleCalcular() {
+    setCalculando(true)
+    const id = await salvar()
+    if (!id) {
+      setCalculando(false)
+      return
+    }
+    const { data, error } = await supabase.rpc('calcular_preco', { p_receita_id: id })
+    setCalculando(false)
+    if (error) {
+      toast.error('Erro ao calcular: ' + error.message)
+      return
+    }
+    if (!data?.ok) {
+      setResultado(null)
+      toast.error(data?.erro ?? 'Não foi possível calcular.')
+    } else {
+      setResultado({
+        custo_direto: data.custo_direto,
+        custo_por_unidade: data.custo_por_unidade,
+        preco_sugerido: data.preco_sugerido,
+        lucro_unidade: data.lucro_unidade,
+      })
+      toast.success('Preço calculado!')
+      onSaved()
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="space-y-2">
+        <Label htmlFor="rec-nome">Nome da receita</Label>
+        <Input
+          id="rec-nome"
+          value={nome}
+          onChange={(e) => setNome(e.target.value)}
+          placeholder="Ex.: Brigadeiro Gourmet"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="rec-rend">Rendimento (quantas unidades a receita faz)</Label>
+        <Input
+          id="rec-rend"
+          inputMode="decimal"
+          value={rendimento}
+          onChange={(e) => setRendimento(e.target.value)}
+          placeholder="Ex.: 30"
+        />
+      </div>
+
+      {/* Ingredientes */}
+      <div className="space-y-2">
+        <Label>Ingredientes</Label>
+        {ingredientes.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Cadastre ingredientes primeiro (menu Ingredientes) para montar a receita.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {itens.map((it, i) => (
+              <div key={i} className="flex items-end gap-2">
+                <div className="flex-1">
+                  <Select
+                    value={it.ingrediente_id}
+                    onValueChange={(v) => setItem(i, { ingrediente_id: v })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Escolha um ingrediente" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {ingredientes.map((g) => (
+                        <SelectItem key={g.id} value={g.id}>
+                          {g.nome} ({g.unidade})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="w-28">
+                  <Input
+                    inputMode="decimal"
+                    value={it.quantidade}
+                    onChange={(e) => setItem(i, { quantidade: e.target.value })}
+                    placeholder={`Qtd${it.ingrediente_id ? ' (' + unidadeDe(it.ingrediente_id) + ')' : ''}`}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => removeItem(i)}
+                  aria-label="Remover ingrediente"
+                >
+                  <Trash2 className="text-muted-foreground" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" variant="outline" size="sm" onClick={addItem}>
+              <Plus /> Adicionar ingrediente
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Calculadora: percentuais */}
+      <div className="space-y-3 rounded-lg border bg-muted/30 p-4">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Calculator className="size-4" /> Calculadora de preço
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          <div className="space-y-1">
+            <Label htmlFor="pct-ind" className="text-xs">Custo indireto %</Label>
+            <Input id="pct-ind" inputMode="decimal" value={pct.indireto}
+              onChange={(e) => setPct({ ...pct, indireto: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="pct-mar" className="text-xs">Margem %</Label>
+            <Input id="pct-mar" inputMode="decimal" value={pct.margem}
+              onChange={(e) => setPct({ ...pct, margem: e.target.value })} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="pct-tax" className="text-xs">Taxas %</Label>
+            <Input id="pct-tax" inputMode="decimal" value={pct.taxas}
+              onChange={(e) => setPct({ ...pct, taxas: e.target.value })} />
+          </div>
+        </div>
+        <Button type="button" onClick={handleCalcular} disabled={calculando} className="w-full">
+          {calculando ? <Loader2 className="animate-spin" /> : <Calculator />}
+          Calcular preço
+        </Button>
+
+        {resultado && (
+          <div className="rounded-md border bg-background p-3 text-center">
+            <p className="text-xs text-muted-foreground">Preço sugerido por unidade</p>
+            <p className="text-3xl font-bold text-primary">{formatBRL(resultado.preco_sugerido)}</p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Lucro de <span className="font-semibold text-foreground">{formatBRL(resultado.lucro_unidade)}</span> por unidade
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Custo direto {formatBRL(resultado.custo_direto)} · custo por unidade {formatBRL(resultado.custo_por_unidade)}
+            </p>
+          </div>
+        )}
+      </div>
+
+      <div className="flex justify-end gap-2 pt-2">
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancelar
+        </Button>
+        <Button type="button" onClick={handleSalvar} disabled={salvando}>
+          {salvando && <Loader2 className="animate-spin" />}
+          {modo === 'criar' ? 'Criar receita' : 'Salvar'}
+        </Button>
+      </div>
+    </div>
+  )
+}

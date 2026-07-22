@@ -9,7 +9,7 @@ Ao concluir cada fase: marcar aqui, resumir em 3–5 linhas, listar o que testar
 - [x] **Fase 2** — Migration + RLS + seed aplicados no Supabase (via SQL Editor). `.env` configurado. Usuário de teste `teste@docegestao.com` criado. Verificado: tabelas existem e RLS bloqueia leitura sem login (retorna `[]`).
 - [x] **Fase 3** — Feita como funções no banco (RPC) por decisão do usuário, não Edge Functions: `calcular_preco` e `confirmar_pedido` + trigger `pedido_entregue_entrada` + índice único de idempotência. Aplicada via `supabase db push`. Testada ponta-a-ponta: fórmula bate (Brigadeiro R$0,94/un) e confirmar 2x não duplica.
 - [x] **Fase 4** — Login/registro (email+senha), `AuthProvider`, rotas protegidas (sem sessão → /login), `AppLayout` com sidebar colapsável (7 menus) + header (nome/logout), Toaster (sonner). Testado no navegador: login redireciona p/ /painel, navegação e proteção de rota OK.
-- [ ] **Fase 5** — Receitas + calculadora de preço (coração do produto).
+- [x] **Fase 5** — `/receitas`: tabela (nome, rendimento, custo, preço, badge de status) + busca + filtro; criar (Dialog), editar (Sheet), excluir (AlertDialog), skeleton, empty state. `ReceitaForm` com seção de ingredientes (select+qtd) e Calculadora (3 percentuais pré-preenchidos por `src/lib/config.ts`, botão Calcular chama `calcular_preco` e mostra preço em destaque + lucro R$/un). Helpers `format.ts`. Testado no navegador: Brigadeiro R$0,94, Beijinho R$0,95/un.
 - [ ] **Fase 6** — Ingredientes, Clientes e Pedidos.
 - [ ] **Fase 7** — Financeiro, Configurações e Painel (KPIs + gráficos Recharts).
 - [ ] **Fase 8** — Polish (loading em todo botão, empty states, não quebrar em tela pequena, revisão de RLS) + deploy Vercel + teste do fluxo completo no desktop.

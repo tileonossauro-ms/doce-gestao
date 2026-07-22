@@ -4,6 +4,7 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import AppLayout from '@/components/AppLayout'
 import SecaoEmBreve from '@/components/SecaoEmBreve'
 import Login from '@/pages/Login'
+import Receitas from '@/pages/Receitas'
 import { Toaster } from '@/components/ui/sonner'
 
 function App() {
@@ -16,7 +17,7 @@ function App() {
             <Route element={<AppLayout />}>
               <Route path="/painel" element={<SecaoEmBreve titulo="Painel" />} />
               <Route path="/ingredientes" element={<SecaoEmBreve titulo="Ingredientes" />} />
-              <Route path="/receitas" element={<SecaoEmBreve titulo="Receitas" />} />
+              <Route path="/receitas" element={<Receitas />} />
               <Route path="/clientes" element={<SecaoEmBreve titulo="Clientes" />} />
               <Route path="/pedidos" element={<SecaoEmBreve titulo="Pedidos" />} />
               <Route path="/financeiro" element={<SecaoEmBreve titulo="Financeiro" />} />
