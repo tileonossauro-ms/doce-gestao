@@ -105,6 +105,16 @@ export default function Pedidos() {
     setExcluir(null)
   }
 
+  /** Muda o andamento da produção direto na tabela. Não mexe no financeiro:
+   *  o dinheiro entra só pela baixa de pagamento, não pela entrega. */
+  async function mudarStatus(p: Pedido, novo: string) {
+    if (novo === p.status) return
+    setPedidos((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: novo } : x))) // otimista
+    const { error } = await supabase.from('pedidos').update({ status: novo }).eq('id', p.id)
+    if (error) { toast.error('Erro ao mudar a produção: ' + error.message); carregar() }
+    else toast.success(`Produção: ${novo}.`)
+  }
+
   const podeC = clientes.length > 0 && receitas.length > 0
 
   return (
@@ -178,7 +188,12 @@ export default function Pedidos() {
                         {formatBRL(p.valor_total)}
                       </span>
                     </TableCell>
-                    <TableCell><Badge variant="outline" className={badgeStatus(p.status)}>{p.status}</Badge></TableCell>
+                    <TableCell>
+                      <Select value={p.status} onValueChange={(v) => mudarStatus(p, v)}>
+                        <SelectTrigger size="sm" className={`w-36 ${badgeStatus(p.status)}`} aria-label="Mudar produção"><SelectValue /></SelectTrigger>
+                        <SelectContent>{STATUS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className={pago ? 'border-green-300 bg-green-50 text-green-700' : 'border-amber-300 bg-amber-50 text-amber-700'}>
                         {pago ? 'Pago' : 'A Pagar'}
