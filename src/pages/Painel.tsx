@@ -17,7 +17,13 @@ import {
 type Lancamento = { id: string; tipo: string; descricao: string | null; valor: number; data: string }
 type Pedido = {
   id: string; status: string; data_entrega: string | null; flag_revisao: boolean
-  cliente: { nome: string } | null; receita: { nome: string } | null
+  cliente: { nome: string } | null; itens: { receita: { nome: string } | null }[]
+}
+
+/** Resumo dos itens de um pedido: "Brigadeiro, Beijinho" (ou "—"). */
+function itensResumo(p: Pedido): string {
+  const nomes = (p.itens ?? []).map((i) => i.receita?.nome).filter(Boolean)
+  return nomes.length ? nomes.join(', ') : '—'
 }
 type Cliente = { id: string; nome: string; telefone: string | null; aniversario: string | null }
 
@@ -48,7 +54,7 @@ export default function Painel() {
   const carregar = useCallback(async () => {
     const [l, p, c] = await Promise.all([
       supabase.from('lancamentos').select('*').order('data', { ascending: false }),
-      supabase.from('pedidos').select('id, status, data_entrega, flag_revisao, cliente:clientes(nome), receita:receitas(nome)'),
+      supabase.from('pedidos').select('id, status, data_entrega, flag_revisao, cliente:clientes(nome), itens:pedido_itens(receita:receitas(nome))'),
       supabase.from('clientes').select('id, nome, telefone, aniversario'),
     ])
     if (l.error) toast.error('Erro ao carregar painel: ' + l.error.message)
@@ -212,7 +218,7 @@ export default function Painel() {
           <CardContent className="space-y-3 text-sm">
             <Linha icone={<AlertTriangle className="size-4 text-amber-500" />} titulo="Pedidos para revisar (valor divergente)" vazio="Nenhum">
               {atencao.revisar.map((p) => (
-                <li key={p.id}>{p.cliente?.nome ?? '—'} · {p.receita?.nome ?? '—'}</li>
+                <li key={p.id}>{p.cliente?.nome ?? '—'} · {itensResumo(p)}</li>
               ))}
             </Linha>
             <Linha icone={<Cake className="size-4 text-pink-500" />} titulo="Aniversariantes de hoje" vazio="Ninguém hoje">
@@ -222,7 +228,7 @@ export default function Painel() {
             </Linha>
             <Linha icone={<Truck className="size-4 text-blue-500" />} titulo="Entregas nos próximos 7 dias" vazio="Nenhuma entrega próxima">
               {atencao.entregas.map((p) => (
-                <li key={p.id}>{formatData(p.data_entrega)} · {p.cliente?.nome ?? '—'} ({p.receita?.nome ?? '—'})</li>
+                <li key={p.id}>{formatData(p.data_entrega)} · {p.cliente?.nome ?? '—'} ({itensResumo(p)})</li>
               ))}
             </Linha>
           </CardContent>
