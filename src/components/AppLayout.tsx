@@ -6,6 +6,13 @@ import {
   Users,
   ClipboardList,
   Wallet,
+  BarChart3,
+  Calendar,
+  Truck,
+  Tag,
+  CreditCard,
+  Tags,
+  Receipt,
   Settings,
   CakeSlice,
   LogOut,
@@ -20,6 +27,7 @@ import {
   SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
+  SidebarGroupLabel,
   SidebarHeader,
   SidebarInset,
   SidebarMenu,
@@ -38,14 +46,23 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { TooltipProvider } from '@/components/ui/tooltip'
 
-const MENU = [
+const OPERACAO = [
   { titulo: 'Painel', url: '/painel', icone: LayoutDashboard },
+  { titulo: 'Pedidos', url: '/pedidos', icone: ClipboardList },
+  { titulo: 'Financeiro', url: '/financeiro', icone: Wallet },
+  { titulo: 'Relatórios', url: '/relatorios', icone: BarChart3 },
+  { titulo: 'Agenda', url: '/agenda', icone: Calendar },
+]
+
+const CADASTROS = [
   { titulo: 'Ingredientes', url: '/ingredientes', icone: ShoppingBasket },
   { titulo: 'Receitas', url: '/receitas', icone: CookingPot },
   { titulo: 'Clientes', url: '/clientes', icone: Users },
-  { titulo: 'Pedidos', url: '/pedidos', icone: ClipboardList },
-  { titulo: 'Financeiro', url: '/financeiro', icone: Wallet },
-  { titulo: 'Configurações', url: '/configuracoes', icone: Settings },
+  { titulo: 'Fornecedores', url: '/fornecedores', icone: Truck },
+  { titulo: 'Marcas', url: '/marcas', icone: Tag },
+  { titulo: 'Formas de pagamento', url: '/formas-pagamento', icone: CreditCard },
+  { titulo: 'Categorias', url: '/categorias', icone: Tags },
+  { titulo: 'Custos fixos', url: '/custos-fixos', icone: Receipt },
 ]
 
 export default function AppLayout() {
@@ -76,15 +93,12 @@ export default function AppLayout() {
           </SidebarHeader>
           <SidebarContent>
             <SidebarGroup>
+              <SidebarGroupLabel>Operação</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {MENU.map((item) => (
+                  {OPERACAO.map((item) => (
                     <SidebarMenuItem key={item.url}>
-                      <SidebarMenuButton
-                        asChild
-                        tooltip={item.titulo}
-                        isActive={pathname === item.url}
-                      >
+                      <SidebarMenuButton asChild tooltip={item.titulo} isActive={pathname === item.url}>
                         <NavLink to={item.url}>
                           <item.icone />
                           <span>{item.titulo}</span>
@@ -92,6 +106,39 @@ export default function AppLayout() {
                       </SidebarMenuButton>
                     </SidebarMenuItem>
                   ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupLabel>Cadastros</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {CADASTROS.map((item) => (
+                    <SidebarMenuItem key={item.url}>
+                      <SidebarMenuButton asChild tooltip={item.titulo} isActive={pathname === item.url}>
+                        <NavLink to={item.url}>
+                          <item.icone />
+                          <span>{item.titulo}</span>
+                        </NavLink>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  ))}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  <SidebarMenuItem>
+                    <SidebarMenuButton asChild tooltip="Configurações" isActive={pathname === '/configuracoes'}>
+                      <NavLink to="/configuracoes">
+                        <Settings />
+                        <span>Configurações</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarGroupContent>
             </SidebarGroup>

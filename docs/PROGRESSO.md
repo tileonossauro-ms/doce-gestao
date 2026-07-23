@@ -30,13 +30,23 @@ Ao concluir cada fase: marcar aqui, resumir em 3–5 linhas, listar o que testar
 - [ ] **Fase 15** — **Custos fixos + DRE**:
   - `custos_fixos` (user_id, nome, valor_mensal, categoria→FK `categorias_financeiras`, ativo, criado_em). `lancamentos` (saída) ganha `categoria` (FK). Tela "Custos fixos" vai em **Cadastros** (não em /financeiro), com aviso educativo fixo/variável.
   - Aba **DRE** em `/financeiro`: filtro de mês → Receita Bruta (Σ itens confirmados) − Custos Variáveis (ingredientes via snapshot + embalagem/taxas/marketing/outros via `lancamentos.categoria`) = margem de contribuição − Custos Fixos (ativos no mês) = **Lucro líquido**; margem líquida %.
-- [ ] **Fase 16** — **Cadastros + sidebar em 2 seções**:
+- [x] **Fase 16** — **Cadastros + sidebar em 2 seções** (código pronto; **pendente `npx supabase db push`** para criar `formas_pagamento`/`categorias_financeiras`). Sidebar com grupos Operação/Cadastros + Configurações isolada. Componente genérico `CadastroSimples` (Table+Dialog+Sheet+AlertDialog+Toast) reutilizável; páginas `FormasPagamento` e `Categorias`. Placeholders (`SecaoEmBreve`) para Relatórios/Agenda/Fornecedores/Marcas/Custos fixos. Migration `20260722160000_cadastros.sql` (RLS + seed dos padrões p/ usuário de teste).
+
+  Spec original (mantida como referência):
+- [ ] ~~**Fase 16**~~ — **Cadastros + sidebar em 2 seções**:
   - Sidebar com cabeçalhos: **Operação** (Painel, Pedidos, Financeiro, Relatórios, Agenda) e **Cadastros** (Ingredientes, Receitas, Clientes, Fornecedores, Marcas, Formas de pagamento, Categorias, Custos fixos); Configurações isolada no fim.
   - `formas_pagamento` (user_id, nome, ativo) — seed 5 padrões (Dinheiro, Pix, Crédito, Débito, Outro). `categorias_financeiras` (user_id, nome, tipo fixo/variável/ambos, ativo) — seed das categorias de F14/15. Ambas viram FK onde antes eram texto.
   - **Não vira cadastro** (fixo, dirige lógica): status pedido, status pagamento, unidade de medida.
+- [ ] **Fase 17** — **Custo fixo na precificação (manual/automático) + janela configurável** (Correção 2, substitui specs anteriores da 17):
+  1. `receitas.pct_custo_fixo numeric default 0` — campo normal, editável por receita, mesmo tratamento de margem/taxas: entra no denominador da fórmula; validação passa a exigir `pct_margem + pct_taxas + pct_custo_fixo < 100`.
+  2. Config do usuário: `modo_custo_fixo` ('manual'|'automatico', default manual); `pct_custo_fixo_padrao` numeric (usado no modo manual; pré-preenche `receitas.pct_custo_fixo` em receita nova, como indireto/margem/taxas); `janela_analise_dias` (select 30/60/90, default 60) — **reutilizada pela Fase 10** (sugestão estoque/produção), trocar o 60 hardcoded por essa config.
+  3. Configurações: no modo automático, mostrar % calculado (`custos_fixos_mes / faturamento_estimado`, usando a janela ou `estimativa_faturamento_mensal` como fallback) com botão "Atualizar cálculo" (puxa sob demanda, não recalcula sozinho) + botão "Usar este valor" (copia p/ `pct_custo_fixo_padrao`).
+  4. `calcular_preco` volta a ser simples: lê só os 4 percentuais salvos na receita (indireto, margem, taxas, custo fixo) e aplica a fórmula. Não consulta `custos_fixos`/`pedido_itens` em runtime — isso fica só no passo 3 (Configurações).
+  5. UI calculadora (Nova/Editar Receita): add campo "Custo fixo (%)" ao lado dos outros três, pré-preenchido pelo padrão, editável.
+  - **Ao implementar:** atualizar a fórmula (regra 2) no CLAUDE.md — 4 percentuais no denominador. Depende de `custos_fixos` (F15) para o modo automático → fazer **após a F15**. Refs a esclarecer: `estimativa_faturamento_mensal` (campo de config de spec anterior não recebida).
 
 ## Ordem recomendada do backlog (dependências)
-16 (formas_pagamento + categorias + reorg sidebar) → 14 (pedido multi-item, usa FKs de 16) → 9 (estoque por pedido_itens) → 10 (relatórios por pedido_itens) → 15 (custos/DRE, usa categorias) → 11 (agenda, independente) → 12 (fornecedores/marcas). **Confirmar com o usuário antes de começar.**
+16 ✅ → 14 (pedido multi-item, usa FKs de 16) → 9 (estoque por pedido_itens) → 10 (relatórios por pedido_itens, janela da F17) → 15 (custos/DRE, usa categorias) → 17 (custo fixo na receita, usa custos_fixos) → 11 (agenda) → 12 (fornecedores/marcas). **Confirmar com o usuário antes de cada grande fase.**
 
 ## Notas
 - Env do usuário já configurado no `.env` (Supabase). Usuário de teste: `teste@docegestao.com` / `doce123456`.

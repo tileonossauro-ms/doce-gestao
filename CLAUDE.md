@@ -37,6 +37,7 @@ SaaS de gestão para confeiteiros caseiros. Nome oficial em todo texto visível:
 7. **Definição de "venda"** (fixa, usada em relatórios): venda = **pedido confirmado** (com `lancamento` de entrada vinculado), datada pela **data do lançamento**. **Custo de um pedido** = `custo_unitario_snapshot × quantidade`.
 8. **Baixa de estoque na confirmação:** para cada ingrediente da receita, gerar movimentação `consumo` com `quantidade = (quantidade_na_receita ÷ rendimento) × quantidade_do_pedido` e descontar de `ingredientes.estoque_atual`. Idempotente (confirmar 2x não duplica consumo nem lançamento).
 9. **Estoque pode ficar negativo** (a confeiteira pode ter esquecido de lançar uma compra): mostrar **alerta visual**, **nunca bloquear** a venda.
+10. **Fixos no sistema (nunca viram cadastro editável, pois dirigem lógica):** status do pedido (novo/em produção/entregue), status de pagamento (A Pagar/Pago), unidade de medida (g/ml/un/kg/L). Já são cadastros editáveis: formas de pagamento e categorias financeiras.
 
 ## Sistema visual (marca) — Fase 13
 - **Cor de marca: roxo `#7C5CFC`** (`oklch(0.60 0.21 285)`). Usada em: botão primário, links, foco de campo (`--ring`), item ativo da sidebar. Resto neutro (preto/branco).
