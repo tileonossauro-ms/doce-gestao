@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Users, Crown, CalendarClock, DollarSign, RefreshCw } from 'lucide-react'
+import { Users, Crown, CalendarClock, DollarSign, RefreshCw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth'
 import { formatBRL, formatData } from '@/lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,6 +12,10 @@ import { Skeleton } from '@/components/ui/skeleton'
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '@/components/ui/table'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -43,8 +48,11 @@ function situacao(acesso_ate: string | null): { txt: string; cor: string } {
 }
 
 export default function Admin() {
+  const { user } = useAuth()
   const [contas, setContas] = useState<Conta[]>([])
   const [loading, setLoading] = useState(true)
+  const [excluir, setExcluir] = useState<Conta | null>(null)
+  const [apagando, setApagando] = useState(false)
 
   const carregar = useCallback(async () => {
     const { data, error } = await supabase
@@ -89,6 +97,17 @@ export default function Admin() {
   async function definirVencimento(c: Conta, data: string) {
     const { error } = await supabase.from('perfis').update({ acesso_ate: data || null }).eq('user_id', c.user_id)
     if (error) return toast.error('Erro: ' + error.message)
+    carregar()
+  }
+
+  async function confirmarExclusao() {
+    if (!excluir) return
+    setApagando(true)
+    const { error } = await supabase.rpc('admin_apagar_usuario', { p_uid: excluir.user_id })
+    setApagando(false)
+    if (error) return toast.error('Erro ao apagar: ' + error.message)
+    toast.success(`Conta de ${excluir.nome ?? excluir.email} apagada.`)
+    setExcluir(null)
     carregar()
   }
 
@@ -151,9 +170,20 @@ export default function Admin() {
                       {c.ultima_atividade ? formatData(c.ultima_atividade) : <span className="text-amber-600">nunca usou</span>}
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm" onClick={() => registrarPagamento(c)}>
-                        <RefreshCw /> Registrar pagamento (+{DIAS_ASSINATURA}d)
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="outline" size="sm" onClick={() => registrarPagamento(c)}>
+                          <RefreshCw /> Registrar pagamento (+{DIAS_ASSINATURA}d)
+                        </Button>
+                        <Button
+                          variant="ghost" size="icon"
+                          onClick={() => setExcluir(c)}
+                          disabled={c.user_id === user?.id}
+                          title={c.user_id === user?.id ? 'Você não pode apagar a própria conta' : 'Apagar conta'}
+                          aria-label="Apagar conta"
+                        >
+                          <Trash2 className="text-red-500" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 )
@@ -168,6 +198,24 @@ export default function Admin() {
         me diga os valores reais que eu ajusto. "Registrar pagamento" renova a assinatura por {DIAS_ASSINATURA} dias.
         Quando a data vence e não é renovada, a confeiteira perde o acesso automaticamente.
       </p>
+
+      <AlertDialog open={!!excluir} onOpenChange={(o) => !o && setExcluir(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tem certeza que quer apagar esta conta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A conta de <strong>{excluir?.nome ?? excluir?.email}</strong> e <strong>todos os dados dela</strong>
+              {' '}(receitas, pedidos, financeiro, estoque, cadastros) serão apagados para sempre. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarExclusao} disabled={apagando} className="bg-red-600 hover:bg-red-700">
+              {apagando ? 'Apagando…' : 'Apagar conta'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
