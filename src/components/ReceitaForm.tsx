@@ -3,7 +3,6 @@ import { Loader2, Plus, Trash2, Calculator } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
-import { getPercentuaisPadrao } from '@/lib/config'
 import { formatBRL, parseNum } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +24,7 @@ export type Receita = {
   pct_indireto: number
   pct_margem: number
   pct_taxas: number
+  pct_custo_fixo: number
   preco_sugerido: number | null
   status: string
 }
@@ -35,6 +35,7 @@ type Resultado = {
   custo_por_unidade: number
   preco_sugerido: number
   lucro_unidade: number
+  custo_fixo_unidade: number
 }
 
 export default function ReceitaForm({
@@ -50,21 +51,16 @@ export default function ReceitaForm({
   onClose: () => void
   modo: 'criar' | 'editar'
 }) {
-  const { user } = useAuth()
+  const { user, perfil } = useAuth()
   const [nome, setNome] = useState(receita?.nome ?? '')
   const [rendimento, setRendimento] = useState(receita?.rendimento?.toString() ?? '')
   const [itens, setItens] = useState<Item[]>([])
-  const [pct, setPct] = useState(() => {
-    if (receita) {
-      return {
-        indireto: receita.pct_indireto.toString(),
-        margem: receita.pct_margem.toString(),
-        taxas: receita.pct_taxas.toString(),
-      }
-    }
-    const p = getPercentuaisPadrao()
-    return { indireto: p.indireto.toString(), margem: p.margem.toString(), taxas: p.taxas.toString() }
-  })
+  const [pct, setPct] = useState(() => ({
+    indireto: String(receita?.pct_indireto ?? perfil?.pct_indireto_padrao ?? 10),
+    margem: String(receita?.pct_margem ?? perfil?.pct_margem_padrao ?? 30),
+    taxas: String(receita?.pct_taxas ?? perfil?.pct_taxas_padrao ?? 5),
+    custoFixo: String(receita?.pct_custo_fixo ?? perfil?.pct_custo_fixo_padrao ?? 0),
+  }))
   const [salvando, setSalvando] = useState(false)
   const [calculando, setCalculando] = useState(false)
   const [resultado, setResultado] = useState<Resultado | null>(null)
@@ -115,6 +111,7 @@ export default function ReceitaForm({
       pct_indireto: parseNum(pct.indireto) || 0,
       pct_margem: parseNum(pct.margem) || 0,
       pct_taxas: parseNum(pct.taxas) || 0,
+      pct_custo_fixo: parseNum(pct.custoFixo) || 0,
     }
 
     let receitaId = receita?.id ?? null
@@ -186,6 +183,7 @@ export default function ReceitaForm({
         custo_por_unidade: data.custo_por_unidade,
         preco_sugerido: data.preco_sugerido,
         lucro_unidade: data.lucro_unidade,
+        custo_fixo_unidade: data.custo_fixo_unidade ?? 0,
       })
       toast.success('Preço calculado!')
       onSaved()
@@ -274,7 +272,7 @@ export default function ReceitaForm({
         <div className="flex items-center gap-2 text-sm font-medium">
           <Calculator className="size-4" /> Calculadora de preço
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="space-y-1">
             <Label htmlFor="pct-ind" className="text-xs">Custo indireto %</Label>
             <Input id="pct-ind" inputMode="decimal" value={pct.indireto}
@@ -290,7 +288,16 @@ export default function ReceitaForm({
             <Input id="pct-tax" inputMode="decimal" value={pct.taxas}
               onChange={(e) => setPct({ ...pct, taxas: e.target.value })} />
           </div>
+          <div className="space-y-1">
+            <Label htmlFor="pct-cf" className="text-xs">Custo fixo %</Label>
+            <Input id="pct-cf" inputMode="decimal" value={pct.custoFixo}
+              onChange={(e) => setPct({ ...pct, custoFixo: e.target.value })} />
+          </div>
         </div>
+        <p className="text-xs text-muted-foreground">
+          Custo fixo % é a fatia do preço que ajuda a pagar aluguel, energia e as outras contas do mês.
+          O padrão vem de Configurações e você pode mudar receita a receita.
+        </p>
         <Button type="button" onClick={handleCalcular} disabled={calculando} className="w-full">
           {calculando ? <Loader2 className="animate-spin" /> : <Calculator />}
           Calcular preço
@@ -305,6 +312,7 @@ export default function ReceitaForm({
             </p>
             <p className="mt-2 text-xs text-muted-foreground">
               Custo direto {formatBRL(resultado.custo_direto)} · custo por unidade {formatBRL(resultado.custo_por_unidade)}
+              {resultado.custo_fixo_unidade > 0 && <> · {formatBRL(resultado.custo_fixo_unidade)} por unidade vão para as contas fixas</>}
             </p>
           </div>
         )}

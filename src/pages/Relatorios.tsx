@@ -4,7 +4,7 @@ import {
 } from 'recharts'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { getJanelaAnalise } from '@/lib/config'
+import { useAuth } from '@/lib/auth'
 import { formatBRL, formatData, formatNum } from '@/lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -70,7 +70,8 @@ export default function Relatorios() {
   const [de, setDe] = useState(diasAtras(29))
   const [ate, setAte] = useState(hoje())
 
-  const janela = getJanelaAnalise()
+  const { perfil } = useAuth()
+  const janela = perfil?.janela_analise_dias ?? 60
 
   const carregar = useCallback(async () => {
     // Carrega o histórico inteiro e filtra no cliente: o volume de um confeiteiro é pequeno

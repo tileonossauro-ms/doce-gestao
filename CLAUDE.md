@@ -18,11 +18,12 @@ SaaS de gestão para confeiteiros caseiros. Nome oficial em todo texto visível:
 
 ## Regras inegociáveis
 1. **RLS habilitado em TODAS as tabelas**, policies com `auth.uid() = user_id`. Cada confeiteiro vê só os próprios dados. Reverificar na fase final.
-2. **Fórmula de precificação** (`pct_margem` e `pct_taxas` são % sobre o **preço final de venda**, não sobre o custo):
+2. **Fórmula de precificação** (`pct_margem`, `pct_taxas` e `pct_custo_fixo` são % sobre o **preço final de venda**, não sobre o custo):
    - `custo_direto = soma(quantidade × custo_unitario)`
    - `custo_por_unidade = custo_direto / rendimento`
-   - `preco_sugerido = custo_por_unidade × (1 + pct_indireto/100) / (1 − pct_margem/100 − pct_taxas/100)`
-   - Arredondar a 2 casas. Erro claro (mantém `status='pendente'`) se `rendimento = 0`, se `pct_margem + pct_taxas ≥ 100`, ou se algum ingrediente estiver sem `custo_unitario`.
+   - `preco_sugerido = custo_por_unidade × (1 + pct_indireto/100) / (1 − pct_margem/100 − pct_taxas/100 − pct_custo_fixo/100)`
+   - Arredondar a 2 casas. Erro claro (mantém `status='pendente'`) se `rendimento = 0`, se `pct_margem + pct_taxas + pct_custo_fixo ≥ 100`, ou se algum ingrediente estiver sem `custo_unitario`.
+   - `calcular_preco` lê **só os 4 percentuais gravados na receita** — não consulta `custos_fixos` em runtime. O modo automático (Fase 17) só sugere o número em Configurações, sob demanda.
 3. Dinheiro sempre `numeric` no banco, exibido com 2 casas. Datas de dia-calendário como `date` (sem hora).
 4. **Padrão único de UI nos CRUDs:** Table + Dialog (criar) + Sheet (editar) + AlertDialog (excluir) + Toast em toda ação + Skeleton no loading + empty state convidando à primeira ação.
 5. Toda rota protegida por login; sem sessão → redireciona para `/login`.
@@ -37,6 +38,7 @@ SaaS de gestão para confeiteiros caseiros. Nome oficial em todo texto visível:
 7. **Definição de "venda"** (fixa, usada em relatórios): venda = **pedido confirmado** (com `lancamento` de entrada vinculado), datada pela **data do lançamento**. **Custo de um pedido** = `custo_unitario_snapshot × quantidade`.
 8. **Baixa de estoque na confirmação:** para cada ingrediente da receita, gerar movimentação `consumo` com `quantidade = (quantidade_na_receita ÷ rendimento) × quantidade_do_pedido` e descontar de `ingredientes.estoque_atual`. Idempotente (confirmar 2x não duplica consumo nem lançamento).
 9. **Estoque pode ficar negativo** (a confeiteira pode ter esquecido de lançar uma compra): mostrar **alerta visual**, **nunca bloquear** a venda.
+10bis. **Configurações do usuário moram na tabela `perfis`** (1 linha por usuário, criada por trigger no signup) — não em localStorage nem em `user_metadata`. O app lê tudo pelo `useAuth().perfil` e grava por `salvarPerfil()`.
 10. **Fixos no sistema (nunca viram cadastro editável, pois dirigem lógica):** status do pedido (novo/em produção/entregue), status de pagamento (A Pagar/Pago), unidade de medida (g/ml/un/kg/L). Já são cadastros editáveis: formas de pagamento e categorias financeiras.
 
 ## Sistema visual (marca) — Fase 13

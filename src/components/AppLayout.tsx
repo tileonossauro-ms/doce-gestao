@@ -66,10 +66,10 @@ const CADASTROS = [
 ]
 
 export default function AppLayout() {
-  const { user } = useAuth()
+  const { user, perfil } = useAuth()
   const navigate = useNavigate()
   const { pathname } = useLocation()
-  const nome = nomeExibicao(user)
+  const nome = nomeExibicao(user, perfil)
 
   async function sair() {
     await supabase.auth.signOut()
