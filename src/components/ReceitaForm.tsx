@@ -3,6 +3,7 @@ import { Loader2, Plus, Trash2, Calculator } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
+import { usePlano } from '@/components/Pro'
 import { formatBRL, parseNum } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -52,6 +53,7 @@ export default function ReceitaForm({
   modo: 'criar' | 'editar'
 }) {
   const { user, perfil } = useAuth()
+  const { isPro } = usePlano()
   const [nome, setNome] = useState(receita?.nome ?? '')
   const [rendimento, setRendimento] = useState(receita?.rendimento?.toString() ?? '')
   const [itens, setItens] = useState<Item[]>([])
@@ -272,7 +274,7 @@ export default function ReceitaForm({
         <div className="flex items-center gap-2 text-sm font-medium">
           <Calculator className="size-4" /> Calculadora de preço
         </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className={`grid grid-cols-2 gap-3 ${isPro ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
           <div className="space-y-1">
             <Label htmlFor="pct-ind" className="text-xs">Custo indireto %</Label>
             <Input id="pct-ind" inputMode="decimal" value={pct.indireto}
@@ -288,16 +290,20 @@ export default function ReceitaForm({
             <Input id="pct-tax" inputMode="decimal" value={pct.taxas}
               onChange={(e) => setPct({ ...pct, taxas: e.target.value })} />
           </div>
-          <div className="space-y-1">
-            <Label htmlFor="pct-cf" className="text-xs">Custo fixo %</Label>
-            <Input id="pct-cf" inputMode="decimal" value={pct.custoFixo}
-              onChange={(e) => setPct({ ...pct, custoFixo: e.target.value })} />
-          </div>
+          {isPro && (
+            <div className="space-y-1">
+              <Label htmlFor="pct-cf" className="text-xs">Custo fixo %</Label>
+              <Input id="pct-cf" inputMode="decimal" value={pct.custoFixo}
+                onChange={(e) => setPct({ ...pct, custoFixo: e.target.value })} />
+            </div>
+          )}
         </div>
-        <p className="text-xs text-muted-foreground">
-          Custo fixo % é a fatia do preço que ajuda a pagar aluguel, energia e as outras contas do mês.
-          O padrão vem de Configurações e você pode mudar receita a receita.
-        </p>
+        {isPro && (
+          <p className="text-xs text-muted-foreground">
+            Custo fixo % é a fatia do preço que ajuda a pagar aluguel, energia e as outras contas do mês.
+            O padrão vem de Configurações e você pode mudar receita a receita.
+          </p>
+        )}
         <Button type="button" onClick={handleCalcular} disabled={calculando} className="w-full">
           {calculando ? <Loader2 className="animate-spin" /> : <Calculator />}
           Calcular preço

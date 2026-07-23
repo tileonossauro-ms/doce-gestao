@@ -58,11 +58,11 @@ const CADASTROS = [
   { titulo: 'Ingredientes', url: '/ingredientes', icone: ShoppingBasket },
   { titulo: 'Receitas', url: '/receitas', icone: CookingPot },
   { titulo: 'Clientes', url: '/clientes', icone: Users },
-  { titulo: 'Fornecedores', url: '/fornecedores', icone: Truck },
-  { titulo: 'Marcas', url: '/marcas', icone: Tag },
+  { titulo: 'Fornecedores', url: '/fornecedores', icone: Truck, pro: true },
+  { titulo: 'Marcas', url: '/marcas', icone: Tag, pro: true },
   { titulo: 'Formas de pagamento', url: '/formas-pagamento', icone: CreditCard },
   { titulo: 'Categorias', url: '/categorias', icone: Tags },
-  { titulo: 'Custos fixos', url: '/custos-fixos', icone: Receipt },
+  { titulo: 'Custos fixos', url: '/custos-fixos', icone: Receipt, pro: true },
 ]
 
 export default function AppLayout() {
@@ -70,6 +70,9 @@ export default function AppLayout() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   const nome = nomeExibicao(user, perfil)
+  const isPro = perfil?.plano === 'pro'
+  // No plano Básico os itens marcados como Pró somem do menu (não vendem, só não aparecem).
+  const cadastros = CADASTROS.filter((item) => isPro || !item.pro)
 
   async function sair() {
     await supabase.auth.signOut()
@@ -114,7 +117,7 @@ export default function AppLayout() {
               <SidebarGroupLabel>Cadastros</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {CADASTROS.map((item) => (
+                  {cadastros.map((item) => (
                     <SidebarMenuItem key={item.url}>
                       <SidebarMenuButton asChild tooltip={item.titulo} isActive={pathname === item.url}>
                         <NavLink to={item.url}>

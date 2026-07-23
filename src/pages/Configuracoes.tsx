@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { formatBRL, formatNum, parseNum } from '@/lib/format'
+import { usePlano } from '@/components/Pro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,6 +25,7 @@ function diasAtras(n: number): string {
 
 export default function Configuracoes() {
   const { user, perfil, salvarPerfil } = useAuth()
+  const { isPro } = usePlano()
 
   const [nome, setNome] = useState('')
   const [indireto, setIndireto] = useState('')
@@ -117,7 +119,7 @@ export default function Configuracoes() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className={`grid grid-cols-2 gap-3 ${isPro ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
             <div className="space-y-2">
               <Label htmlFor="cfg-ind">Custo indireto %</Label>
               <Input id="cfg-ind" inputMode="decimal" value={indireto} onChange={(e) => setIndireto(e.target.value)} />
@@ -130,18 +132,22 @@ export default function Configuracoes() {
               <Label htmlFor="cfg-tax">Taxas %</Label>
               <Input id="cfg-tax" inputMode="decimal" value={taxas} onChange={(e) => setTaxas(e.target.value)} />
             </div>
+            {isPro && (
+              <div className="space-y-2">
+                <Label htmlFor="cfg-cf">Custo fixo %</Label>
+                <Input id="cfg-cf" inputMode="decimal" value={custoFixo} onChange={(e) => setCustoFixo(e.target.value)} />
+              </div>
+            )}
+          </div>
+          {isPro && (
             <div className="space-y-2">
-              <Label htmlFor="cfg-cf">Custo fixo %</Label>
-              <Input id="cfg-cf" inputMode="decimal" value={custoFixo} onChange={(e) => setCustoFixo(e.target.value)} />
+              <Label htmlFor="cfg-est">Quanto você espera faturar por mês (R$)</Label>
+              <Input id="cfg-est" inputMode="decimal" value={estimativa} onChange={(e) => setEstimativa(e.target.value)} placeholder="Opcional" />
+              <p className="text-xs text-muted-foreground">
+                Usado só no cálculo automático abaixo, quando ainda não há vendas suficientes para estimar.
+              </p>
             </div>
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="cfg-est">Quanto você espera faturar por mês (R$)</Label>
-            <Input id="cfg-est" inputMode="decimal" value={estimativa} onChange={(e) => setEstimativa(e.target.value)} placeholder="Opcional" />
-            <p className="text-xs text-muted-foreground">
-              Usado só no cálculo automático abaixo, quando ainda não há vendas suficientes para estimar.
-            </p>
-          </div>
+          )}
           <Button onClick={salvarPercentuais} disabled={salvandoPct}>
             {salvandoPct ? <Loader2 className="animate-spin" /> : <Save />}
             Salvar percentuais
@@ -151,7 +157,7 @@ export default function Configuracoes() {
 
       <Seguranca />
 
-      <CustoFixoAutomatico />
+      {isPro && <CustoFixoAutomatico />}
 
       <Card>
         <CardHeader>

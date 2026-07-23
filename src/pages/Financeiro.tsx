@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { formatBRL, formatData, parseNum } from '@/lib/format'
 import Dre from '@/components/Dre'
+import { usePlano } from '@/components/Pro'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -56,6 +57,7 @@ function diasAtras(n: number): string {
 }
 
 export default function Financeiro() {
+  const { isPro } = usePlano()
   const [lista, setLista] = useState<Lancamento[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loading, setLoading] = useState(true)
@@ -117,16 +119,18 @@ export default function Financeiro() {
         {aba === 'lancamentos' && <Button onClick={() => setCriar(true)}><Plus /> Novo lançamento</Button>}
       </div>
 
-      <div className="flex gap-2">
-        <Button variant={aba === 'lancamentos' ? 'default' : 'outline'} size="sm" onClick={() => setAba('lancamentos')}>
-          Lançamentos
-        </Button>
-        <Button variant={aba === 'dre' ? 'default' : 'outline'} size="sm" onClick={() => setAba('dre')}>
-          DRE (resultado do mês)
-        </Button>
-      </div>
+      {isPro && (
+        <div className="flex gap-2">
+          <Button variant={aba === 'lancamentos' ? 'default' : 'outline'} size="sm" onClick={() => setAba('lancamentos')}>
+            Lançamentos
+          </Button>
+          <Button variant={aba === 'dre' ? 'default' : 'outline'} size="sm" onClick={() => setAba('dre')}>
+            DRE (resultado do mês)
+          </Button>
+        </div>
+      )}
 
-      {aba === 'dre' ? <Dre /> : (
+      {isPro && aba === 'dre' ? <Dre /> : (
       <>
       <div className="grid gap-3 sm:grid-cols-3">
         <CardKpi titulo="Entradas do mês" valor={doMes.entradas} icone={<ArrowUpCircle className="size-5 text-green-600" />} cor="text-green-600" loading={loading} />

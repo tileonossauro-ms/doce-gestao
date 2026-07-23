@@ -5,6 +5,7 @@ import {
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
+import { AvisoPro, usePlano } from '@/components/Pro'
 import { formatBRL, formatData, formatNum } from '@/lib/format'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -71,6 +72,7 @@ export default function Relatorios() {
   const [ate, setAte] = useState(hoje())
 
   const { perfil } = useAuth()
+  const { isPro } = usePlano()
   const janela = perfil?.janela_analise_dias ?? 60
 
   const carregar = useCallback(async () => {
@@ -359,77 +361,88 @@ export default function Relatorios() {
           />
         </Bloco>
 
-        {/* (7) Clientes sumidos */}
-        <Bloco titulo={`Clientes sumidos (${DIAS_SUMIDO}+ dias)`} descricao="Olha todo o histórico, não só o período. Boa lista para uma mensagem de retomada.">
-          <Tabela
-            cabecalho={['Cliente', 'Última compra', 'Dias sem comprar']}
-            vazio="Nenhum cliente sumido. 🎉"
-            linhas={sumidos.map((c) => [
-              c.nome,
-              c.ultima ? formatData(c.ultima) : <Badge key={c.id} variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">nunca comprou</Badge>,
-              c.dias == null ? '—' : formatNum(c.dias, 0),
-            ])}
-          />
-        </Bloco>
+        {/* (7) Clientes sumidos — Pró */}
+        {isPro ? (
+          <Bloco titulo={`Clientes sumidos (${DIAS_SUMIDO}+ dias)`} descricao="Olha todo o histórico, não só o período. Boa lista para uma mensagem de retomada.">
+            <Tabela
+              cabecalho={['Cliente', 'Última compra', 'Dias sem comprar']}
+              vazio="Nenhum cliente sumido. 🎉"
+              linhas={sumidos.map((c) => [
+                c.nome,
+                c.ultima ? formatData(c.ultima) : <Badge key={c.id} variant="outline" className="border-amber-300 bg-amber-50 text-amber-700">nunca comprou</Badge>,
+                c.dias == null ? '—' : formatNum(c.dias, 0),
+              ])}
+            />
+          </Bloco>
+        ) : (
+          <AvisoPro recurso="Clientes sumidos" />
+        )}
       </div>
 
-      {/* (8) Vendas por dia da semana */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Vendas por dia da semana</CardTitle>
-          <CardDescription>Em que dias o dinheiro entra — útil para escolher o dia de produzir e o de entregar.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {resumo.pedidos === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma venda no período.</p>
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={porDiaSemana}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="dia" fontSize={12} />
-                <YAxis fontSize={12} width={50} />
-                <Tooltip formatter={(v) => formatBRL(Number(v))} />
-                <Bar dataKey="faturamento" name="Faturamento" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
-        </CardContent>
-      </Card>
+      {/* (8) Vendas por dia da semana — Pró */}
+      {isPro ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Vendas por dia da semana</CardTitle>
+            <CardDescription>Em que dias o dinheiro entra — útil para escolher o dia de produzir e o de entregar.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {resumo.pedidos === 0 ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma venda no período.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={porDiaSemana}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="dia" fontSize={12} />
+                  <YAxis fontSize={12} width={50} />
+                  <Tooltip formatter={(v) => formatBRL(Number(v))} />
+                  <Bar dataKey="faturamento" name="Faturamento" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </CardContent>
+        </Card>
+      ) : (
+        <AvisoPro recurso="Vendas por dia da semana" />
+      )}
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        {/* (4) Sugestão de compra */}
-        <Bloco
-          titulo="Sugestão de compra de ingredientes"
-          descricao={`Baseado no consumo dos últimos ${janela} dias (muda em Configurações), para cobrir os próximos ${COBERTURA_DIAS} dias.`}
-        >
-          <Tabela
-            cabecalho={['Ingrediente', 'Uso por dia', 'Estoque hoje', 'Comprar']}
-            vazio="Sem consumo suficiente para sugerir compras ainda."
-            linhas={sugestaoEstoque.map((g) => [
-              g.nome,
-              `${formatNum(g.porDia, 3)} ${g.unidade}`,
-              <span key={g.id} className={g.estoque_atual < 0 ? 'text-red-600' : ''}>{formatNum(g.estoque_atual)} {g.unidade}</span>,
-              <strong key={g.id + '-c'}>{formatNum(g.comprar)} {g.unidade}</strong>,
-            ])}
-          />
-        </Bloco>
+      {/* (4) e (5) Sugestões — Pró */}
+      {isPro ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Bloco
+            titulo="Sugestão de compra de ingredientes"
+            descricao={`Baseado no consumo dos últimos ${janela} dias (muda em Configurações), para cobrir os próximos ${COBERTURA_DIAS} dias.`}
+          >
+            <Tabela
+              cabecalho={['Ingrediente', 'Uso por dia', 'Estoque hoje', 'Comprar']}
+              vazio="Sem consumo suficiente para sugerir compras ainda."
+              linhas={sugestaoEstoque.map((g) => [
+                g.nome,
+                `${formatNum(g.porDia, 3)} ${g.unidade}`,
+                <span key={g.id} className={g.estoque_atual < 0 ? 'text-red-600' : ''}>{formatNum(g.estoque_atual)} {g.unidade}</span>,
+                <strong key={g.id + '-c'}>{formatNum(g.comprar)} {g.unidade}</strong>,
+              ])}
+            />
+          </Bloco>
 
-        {/* (5) Sugestão de produção */}
-        <Bloco
-          titulo="Sugestão de produção por semana"
-          descricao={`Média vendida por semana nos últimos ${janela} dias.`}
-        >
-          <Tabela
-            cabecalho={['Produto', `Vendidos em ${janela} dias`, 'Produzir por semana']}
-            vazio="Sem vendas suficientes para sugerir produção ainda."
-            linhas={sugestaoProducao.map((p) => [
-              p.nome,
-              formatNum(p.qtd, 0),
-              <strong key={p.id}>{formatNum(Math.ceil(p.porSemana), 0)}</strong>,
-            ])}
-          />
-        </Bloco>
-      </div>
+          <Bloco
+            titulo="Sugestão de produção por semana"
+            descricao={`Média vendida por semana nos últimos ${janela} dias.`}
+          >
+            <Tabela
+              cabecalho={['Produto', `Vendidos em ${janela} dias`, 'Produzir por semana']}
+              vazio="Sem vendas suficientes para sugerir produção ainda."
+              linhas={sugestaoProducao.map((p) => [
+                p.nome,
+                formatNum(p.qtd, 0),
+                <strong key={p.id}>{formatNum(Math.ceil(p.porSemana), 0)}</strong>,
+              ])}
+            />
+          </Bloco>
+        </div>
+      ) : (
+        <AvisoPro recurso="Sugestões de compra e produção" />
+      )}
     </div>
   )
 }
