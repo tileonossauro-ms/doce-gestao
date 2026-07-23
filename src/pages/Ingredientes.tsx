@@ -295,7 +295,10 @@ function IngredienteForm({
         </p>
         {custoUnit != null && (
           <p className="text-sm">
-            Custo por {unidade}: <strong className="text-primary">{formatBRL(custoUnit)}</strong>
+            Custo por {unidade}:{' '}
+            <strong className="text-primary">
+              R$ {custoUnit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+            </strong>
           </p>
         )}
       </div>
