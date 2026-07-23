@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { Navigate } from 'react-router-dom'
 import { Lock, Sparkles } from 'lucide-react'
 import { useAuth } from '@/lib/auth'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -48,4 +49,11 @@ export function RotaPro({ recurso, children }: { recurso: string; children: Reac
   const { carregado, isPro } = usePlano()
   if (!carregado) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-64" /></div>
   return isPro ? <>{children}</> : <BloqueioPro recurso={recurso} />
+}
+
+/** Guarda de rota do superadmin: quem não é admin vai para o painel. */
+export function RotaAdmin({ children }: { children: ReactNode }) {
+  const { perfil } = useAuth()
+  if (!perfil) return <div className="space-y-4"><Skeleton className="h-8 w-48" /><Skeleton className="h-64" /></div>
+  return perfil.is_superadmin ? <>{children}</> : <Navigate to="/painel" replace />
 }

@@ -14,6 +14,8 @@ export type Perfil = {
   estimativa_faturamento_mensal: number | null
   janela_analise_dias: number
   plano: 'basico' | 'pro'
+  is_superadmin: boolean
+  acesso_ate: string | null
 }
 
 type AuthContextType = {

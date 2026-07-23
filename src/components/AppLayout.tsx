@@ -16,6 +16,7 @@ import {
   Settings,
   CakeSlice,
   LogOut,
+  Crown,
   ChevronsUpDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -78,6 +79,24 @@ export default function AppLayout() {
     await supabase.auth.signOut()
     toast.success('Você saiu da conta.')
     navigate('/login', { replace: true })
+  }
+
+  // Assinatura vencida bloqueia o app (superadmin nunca é bloqueado).
+  const hoje = new Date().toISOString().slice(0, 10)
+  const vencida = !!perfil && !perfil.is_superadmin && !!perfil.acesso_ate && perfil.acesso_ate < hoje
+  if (vencida) {
+    return (
+      <div className="flex min-h-svh items-center justify-center bg-muted/40 p-4">
+        <div className="max-w-md rounded-lg border bg-background p-8 text-center">
+          <h1 className="text-xl font-semibold">Sua assinatura venceu</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            O acesso ao Doce Gestão está pausado porque a assinatura não está em dia. Seus dados continuam guardados —
+            assim que o pagamento for confirmado, tudo volta ao normal. Fale com a gente para renovar.
+          </p>
+          <button onClick={sair} className="mt-6 text-sm text-primary underline">Sair</button>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -170,6 +189,12 @@ export default function AppLayout() {
                       </span>
                     </DropdownMenuLabel>
                     <DropdownMenuSeparator />
+                    {perfil?.is_superadmin && (
+                      <DropdownMenuItem onClick={() => navigate('/admin')}>
+                        <Crown />
+                        Painel admin
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem onClick={sair}>
                       <LogOut />
                       Sair

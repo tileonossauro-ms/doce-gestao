@@ -17,7 +17,8 @@ import CustosFixos from '@/pages/CustosFixos'
 import Agenda from '@/pages/Agenda'
 import Fornecedores from '@/pages/Fornecedores'
 import Marcas from '@/pages/Marcas'
-import { RotaPro } from '@/components/Pro'
+import { RotaPro, RotaAdmin } from '@/components/Pro'
+import Admin from '@/pages/Admin'
 import { Toaster } from '@/components/ui/sonner'
 
 function App() {
@@ -42,6 +43,7 @@ function App() {
               <Route path="/marcas" element={<RotaPro recurso="Marcas"><Marcas /></RotaPro>} />
               <Route path="/custos-fixos" element={<RotaPro recurso="Custos fixos"><CustosFixos /></RotaPro>} />
               <Route path="/configuracoes" element={<Configuracoes />} />
+              <Route path="/admin" element={<RotaAdmin><Admin /></RotaAdmin>} />
               <Route index element={<Navigate to="/painel" replace />} />
             </Route>
           </Route>
