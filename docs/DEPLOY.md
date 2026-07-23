@@ -43,18 +43,34 @@ Dentro de `dist/` você vai ver:
 
 ## Passo 2 — Enviar para a Hostinger
 
+Endereço deste projeto: **https://docegestao.voltaregestao.com.br**
+
+> ⚠️ **Atenção: é um subdomínio.** Cada subdomínio da Hostinger tem a **sua própria
+> pasta**, e ela **não** é a `public_html`. A `public_html` é o site principal
+> (`voltaregestao.com.br`). Se você jogar os arquivos lá, vai substituir o site
+> principal e o Doce Gestão continuará sem aparecer.
+>
+> **Como descobrir a pasta certa:** hPanel → **Domínios → Subdomínios**. Na linha do
+> `docegestao`, existe uma coluna com a pasta (o "document root"). Quase sempre é
+> `public_html/docegestao`. Anote o que estiver escrito lá — é para dentro dessa pasta
+> que tudo vai.
+
 1. Entre no **hPanel** da Hostinger.
 2. Vá em **Arquivos → Gerenciador de Arquivos**.
-3. Abra a pasta **`public_html`**.
-4. Se houver arquivos de teste da Hostinger lá (`default.php`, `index.html` de exemplo),
-   **apague-os** — senão eles aparecem no lugar do sistema.
+3. Abra a pasta do subdomínio que você anotou (ex.: `public_html/docegestao`).
+4. Apague o que estiver lá dentro. Hoje tem a página "Está tudo pronto!" da Hostinger
+   (normalmente um `index.html` ou `default.php`) — se ela ficar, pode aparecer no
+   lugar do sistema.
 5. No seu computador, entre na pasta `dist/`, selecione **tudo o que está dentro dela**
    e crie um arquivo `.zip`.
-   ⚠️ Compacte **o conteúdo** da pasta, não a pasta `dist` inteira. Se você subir a pasta,
-   o site vai ficar em `seudominio.com/dist` em vez da raiz.
+   ⚠️ Compacte **o conteúdo** da pasta, não a pasta `dist` inteira. Se subir a pasta,
+   o sistema vai parar em `.../dist` em vez de abrir direto no endereço.
 6. No Gerenciador de Arquivos, clique em **Upload** e envie o `.zip`.
 7. Clique com o botão direito no `.zip` → **Extract / Extrair**.
 8. Apague o `.zip` depois de extrair.
+
+No fim, a pasta do subdomínio deve conter exatamente: `index.html`, `favicon.svg`,
+a pasta `assets/` e o arquivo oculto `.htaccess`.
 
 ---
 
@@ -71,10 +87,11 @@ mostraria "404 — página não encontrada"**. Ele manda o servidor entregar sem
 Como conferir:
 1. No Gerenciador de Arquivos, clique nos três pontinhos (ou em **Configurações**) e
    marque **"Mostrar arquivos ocultos"** — arquivos que começam com ponto ficam
-   escondidos por padrão.
-2. Confirme que o `.htaccess` está dentro de `public_html`.
-3. Se não estiver, ele se perdeu na compactação: crie um arquivo novo com esse nome
-   e cole o conteúdo de `public/.htaccess` do projeto.
+   escondidos por padrão. Esse é o motivo nº 1 de o arquivo "sumir".
+2. Confirme que o `.htaccess` está na pasta do subdomínio, ao lado do `index.html`.
+3. Se não estiver, ele se perdeu na compactação (o Windows costuma ignorar arquivos
+   ocultos ao criar zip): clique em **Novo arquivo**, dê o nome `.htaccess` e cole
+   dentro o conteúdo de `public/.htaccess` do projeto.
 
 ---
 
@@ -83,28 +100,49 @@ Como conferir:
 Sem esse passo, o link de **"esqueci minha senha"** vai levar a pessoa para
 `localhost` — um endereço que só existe no seu computador.
 
-1. Abra o painel do **Supabase** → seu projeto.
-2. Vá em **Authentication → URL Configuration**.
-3. Em **Site URL**, coloque o endereço do site: `https://seudominio.com`
-4. Em **Redirect URLs**, adicione:
-   - `https://seudominio.com/**`
-   - `http://localhost:5173/**` (para continuar testando no seu computador)
-5. Salve.
+1. Abra o painel do **Supabase** (supabase.com/dashboard) → projeto do Doce Gestão.
+2. No menu da esquerda, vá em **Authentication** (ícone de cadeado).
+3. Dentro dele, procure **URL Configuration** (em algumas versões fica em
+   *Authentication → Settings*, seção "URL Configuration").
+4. Em **Site URL**, apague o que estiver lá e coloque exatamente:
+   ```
+   https://docegestao.voltaregestao.com.br
+   ```
+   Sem barra no final.
+5. Em **Redirect URLs**, clique em **Add URL** e adicione as duas:
+   ```
+   https://docegestao.voltaregestao.com.br/**
+   http://localhost:5173/**
+   ```
+   Os dois asteriscos significam "qualquer página dentro desse endereço". A segunda
+   linha é para você continuar testando no seu computador.
+6. Clique em **Save**.
+
+**O que cada uma faz:** a *Site URL* é para onde o Supabase manda a pessoa depois de
+clicar no link do e-mail de recuperação de senha. As *Redirect URLs* são a lista de
+endereços que o Supabase aceita como destino — é uma proteção: sem essa lista,
+alguém poderia forjar um link que rouba o acesso mandando para outro site.
 
 ---
 
 ## Passo 5 — Testar o que está no ar
 
-Abra `https://seudominio.com` e confira, nesta ordem:
+Abra `https://docegestao.voltaregestao.com.br` e confira, nesta ordem:
 
 1. **Abre a tela de login** com o cadeado (HTTPS) na barra de endereço.
+   - Se ainda aparecer "Está tudo pronto!", os arquivos foram para a pasta errada
+     (provavelmente `public_html` em vez da pasta do subdomínio), ou o navegador
+     guardou a página antiga — teste numa aba anônima.
+   - Se abrir **em branco**, veja "O site abriu em branco" lá embaixo.
 2. **Entrar** com seu e-mail e senha funciona.
-3. **Aperte F5 dentro do sistema** (em Pedidos, por exemplo). Se aparecer 404,
-   o `.htaccess` não está no lugar — volte ao passo 3.
+3. **O teste decisivo do `.htaccess`:** entre em **Pedidos** e **aperte F5**.
+   - Carregou a página de pedidos → está tudo certo.
+   - Deu **404 / Not Found** → o `.htaccess` não está lá. Volte ao passo 3.
 4. Os seus **dados aparecem** (receitas, pedidos, clientes).
 5. Crie um pedido de teste, dê baixa e confira se o estoque baixou.
-6. **Sair** e tentar abrir `https://seudominio.com/painel` direto: tem que mandar
-   para o login.
+6. **Sair** e tentar abrir `https://docegestao.voltaregestao.com.br/painel` direto:
+   tem que mandar para o login.
+7. Em **Configurações → Senha de acesso**, troque a senha e entre de novo com a nova.
 
 ---
 
