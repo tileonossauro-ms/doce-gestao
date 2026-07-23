@@ -66,10 +66,10 @@ export default function AppLayout() {
         <Sidebar collapsible="icon">
           <SidebarHeader>
             <div className="flex items-center gap-2 px-2 py-1">
-              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                <CakeSlice className="size-5 text-primary" />
+              <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary">
+                <CakeSlice className="size-5 text-sidebar-primary-foreground" />
               </div>
-              <span className="text-lg font-semibold group-data-[collapsible=icon]:hidden">
+              <span className="text-lg font-semibold text-sidebar-foreground group-data-[collapsible=icon]:hidden">
                 Doce Gestão
               </span>
             </div>
@@ -102,12 +102,12 @@ export default function AppLayout() {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton size="lg">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-medium uppercase">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-accent text-sm font-medium text-sidebar-accent-foreground uppercase">
                         {nome.charAt(0)}
                       </div>
                       <div className="grid flex-1 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
                         <span className="truncate font-medium">{nome}</span>
-                        <span className="truncate text-xs text-muted-foreground">{user?.email}</span>
+                        <span className="truncate text-xs text-sidebar-foreground/60">{user?.email}</span>
                       </div>
                       <ChevronsUpDown className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
                     </SidebarMenuButton>

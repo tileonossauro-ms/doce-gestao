@@ -67,19 +67,32 @@ export default function Painel() {
 
   const dias = Number(periodo)
   const inicio = diasAtras(dias - 1)
+  const inicioAnterior = diasAtras(dias * 2 - 1) // janela imediatamente anterior, mesmo tamanho
 
   const kpis = useMemo(() => {
-    const lanc = lancamentos.filter((l) => l.data >= inicio)
-    const faturamento = lanc.filter((l) => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0)
-    const saidas = lanc.filter((l) => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0)
-    const nPedidos = pedidos.filter((p) => p.data_entrega && p.data_entrega >= inicio).length
-    return {
-      faturamento,
-      lucro: faturamento - saidas,
-      nPedidos,
-      ticket: nPedidos > 0 ? faturamento / nPedidos : 0,
+    // Calcula os 4 números para uma janela [de, ate).
+    const janela = (de: string, ate: string) => {
+      const lanc = lancamentos.filter((l) => l.data >= de && l.data < ate)
+      const faturamento = lanc.filter((l) => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0)
+      const saidas = lanc.filter((l) => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0)
+      const nPedidos = pedidos.filter((p) => p.data_entrega && p.data_entrega >= de && p.data_entrega < ate).length
+      return { faturamento, lucro: faturamento - saidas, nPedidos, ticket: nPedidos > 0 ? faturamento / nPedidos : 0 }
     }
-  }, [lancamentos, pedidos, inicio])
+    const amanha = diasAFrente(1)
+    const atual = janela(inicio, amanha)
+    const anterior = janela(inicioAnterior, inicio)
+    // Variação % vs período anterior (null quando não há base de comparação).
+    const varPct = (a: number, b: number) => (b > 0 ? ((a - b) / b) * 100 : null)
+    return {
+      ...atual,
+      trend: {
+        faturamento: varPct(atual.faturamento, anterior.faturamento),
+        lucro: varPct(atual.lucro, anterior.lucro),
+        nPedidos: varPct(atual.nPedidos, anterior.nPedidos),
+        ticket: varPct(atual.ticket, anterior.ticket),
+      },
+    }
+  }, [lancamentos, pedidos, inicio, inicioAnterior])
 
   // Gráfico 1: faturamento x lucro por semana
   const dadosSemana = useMemo(() => {
@@ -153,10 +166,10 @@ export default function Painel() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Kpi titulo="Faturamento" valor={formatBRL(kpis.faturamento)} icone={<DollarSign className="size-5 text-green-600" />} />
-        <Kpi titulo="Lucro (entradas − saídas)" valor={formatBRL(kpis.lucro)} icone={<TrendingUp className="size-5 text-primary" />} cor={kpis.lucro < 0 ? 'text-red-600' : undefined} />
-        <Kpi titulo="Pedidos" valor={String(kpis.nPedidos)} icone={<ClipboardList className="size-5 text-blue-600" />} />
-        <Kpi titulo="Ticket médio" valor={formatBRL(kpis.ticket)} icone={<Receipt className="size-5 text-amber-600" />} />
+        <Kpi destaque titulo="Faturamento" valor={formatBRL(kpis.faturamento)} trend={kpis.trend.faturamento} icone={<DollarSign className="size-5 text-primary" />} />
+        <Kpi titulo="Lucro (entradas − saídas)" valor={formatBRL(kpis.lucro)} trend={kpis.trend.lucro} icone={<TrendingUp className="size-5 text-primary" />} cor={kpis.lucro < 0 ? 'text-red-600' : undefined} />
+        <Kpi titulo="Pedidos" valor={String(kpis.nPedidos)} trend={kpis.trend.nPedidos} icone={<ClipboardList className="size-5 text-primary" />} />
+        <Kpi titulo="Ticket médio" valor={formatBRL(kpis.ticket)} trend={kpis.trend.ticket} icone={<Receipt className="size-5 text-primary" />} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -170,7 +183,7 @@ export default function Painel() {
                 <YAxis fontSize={12} width={40} />
                 <Tooltip formatter={(v) => formatBRL(Number(v))} />
                 <Legend />
-                <Bar dataKey="faturamento" name="Faturamento" fill="#7c3aed" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="faturamento" name="Faturamento" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="lucro" name="Lucro" fill="#16a34a" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -186,7 +199,7 @@ export default function Painel() {
                 <XAxis dataKey="status" fontSize={12} />
                 <YAxis fontSize={12} width={30} allowDecimals={false} />
                 <Tooltip />
-                <Bar dataKey="qtd" name="Pedidos" fill="#7c3aed" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="qtd" name="Pedidos" fill="#7C5CFC" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -239,15 +252,35 @@ export default function Painel() {
   )
 }
 
-function Kpi({ titulo, valor, icone, cor }: { titulo: string; valor: string; icone: React.ReactNode; cor?: string }) {
+function Kpi({ titulo, valor, icone, cor, trend, destaque }: {
+  titulo: string; valor: string; icone: React.ReactNode; cor?: string; trend?: number | null; destaque?: boolean
+}) {
   return (
-    <Card>
+    <Card className={destaque ? 'border-primary/30 bg-primary/5' : undefined}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
         {icone}
       </CardHeader>
-      <CardContent><p className={`text-2xl font-bold ${cor ?? ''}`}>{valor}</p></CardContent>
+      <CardContent>
+        <div className="flex items-end gap-2">
+          <p className={`font-bold ${destaque ? 'text-3xl' : 'text-2xl'} ${cor ?? ''}`}>{valor}</p>
+          <Tendencia pct={trend} />
+        </div>
+      </CardContent>
     </Card>
+  )
+}
+
+/** Texto pequeno de variação vs período anterior: verde para alta, vermelho para queda. */
+function Tendencia({ pct }: { pct?: number | null }) {
+  if (pct == null || !Number.isFinite(pct)) return null
+  const alta = pct >= 0
+  const arred = Math.abs(Math.round(pct))
+  if (arred === 0) return <span className="pb-1 text-xs text-muted-foreground">estável</span>
+  return (
+    <span className={`pb-1 text-xs font-medium ${alta ? 'text-green-600' : 'text-red-600'}`}>
+      {alta ? '▲' : '▼'} {arred}%
+    </span>
   )
 }
 

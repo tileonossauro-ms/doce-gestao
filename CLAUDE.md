@@ -38,6 +38,13 @@ SaaS de gestão para confeiteiros caseiros. Nome oficial em todo texto visível:
 8. **Baixa de estoque na confirmação:** para cada ingrediente da receita, gerar movimentação `consumo` com `quantidade = (quantidade_na_receita ÷ rendimento) × quantidade_do_pedido` e descontar de `ingredientes.estoque_atual`. Idempotente (confirmar 2x não duplica consumo nem lançamento).
 9. **Estoque pode ficar negativo** (a confeiteira pode ter esquecido de lançar uma compra): mostrar **alerta visual**, **nunca bloquear** a venda.
 
+## Sistema visual (marca) — Fase 13
+- **Cor de marca: roxo `#7C5CFC`** (`oklch(0.60 0.21 285)`). Usada em: botão primário, links, foco de campo (`--ring`), item ativo da sidebar. Resto neutro (preto/branco).
+- **Sidebar escura** (`#14121B`, `--sidebar oklch(0.16 0.015 300)`): logo em versão clara, itens em cinza-claro, **item ativo = pílula roxa preenchida** (regra CSS unlayered em `index.css` sobre `[data-slot="sidebar-menu-button"][data-active="true"]`). Conteúdo (main) segue claro.
+- **Badges semânticos** (papel, não decoração): info=azul, warning=âmbar, success=verde, danger=vermelho. Manter esse mapeamento.
+- **KPIs do Painel:** card de Faturamento com destaque (maior + leve fundo roxo) e texto de tendência % ao lado (verde alta / vermelho queda) vs período anterior.
+- Não faz parte do MVP: busca global Ctrl+K, sino de notificação, "dica do dia", ilustrações.
+
 ## Como trabalhar
 - Trabalhar por fases (ver `docs/PROGRESSO.md`). Ao fim de cada fase: parar, resumir em 3–5 linhas, listar o que testar, aguardar OK.
 - Atualizar `docs/PROGRESSO.md` ao concluir cada fase. "continue" = retomar a partir dele.
