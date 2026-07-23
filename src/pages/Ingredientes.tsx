@@ -32,6 +32,8 @@ type Ingrediente = {
   nome: string
   unidade: string
   custo_unitario: number | null
+  tamanho_embalagem: number | null
+  preco_embalagem: number | null
   estoque_atual: number
   estoque_minimo: number
   marca_id: string | null
@@ -220,22 +222,30 @@ function IngredienteForm({
   const { user } = useAuth()
   const [nome, setNome] = useState(ingrediente?.nome ?? '')
   const [unidade, setUnidade] = useState(ingrediente?.unidade ?? 'un')
-  const [custo, setCusto] = useState(ingrediente?.custo_unitario?.toString() ?? '')
+  // Compra por embalagem: tamanho (na unidade de uso) + preço da embalagem.
+  const [tamanho, setTamanho] = useState(ingrediente?.tamanho_embalagem?.toString() ?? '')
+  const [preco, setPreco] = useState(ingrediente?.preco_embalagem?.toString() ?? '')
   const [minimo, setMinimo] = useState(ingrediente?.estoque_minimo?.toString() ?? '')
   const [marcaId, setMarcaId] = useState(ingrediente?.marca_id ?? 'nenhuma')
   const [fornecedorId, setFornecedorId] = useState(ingrediente?.fornecedor_id ?? 'nenhum')
   const [salvando, setSalvando] = useState(false)
 
+  const t = parseNum(tamanho)
+  const p = parseNum(preco)
+  // custo por unidade de uso = preço da embalagem ÷ tamanho da embalagem
+  const custoUnit = Number.isFinite(t) && t > 0 && Number.isFinite(p) ? p / t : null
+
   async function salvar() {
     if (!user) return
     if (!nome.trim()) return toast.error('Informe o nome do ingrediente.')
-    const c = parseNum(custo)
     const m = parseNum(minimo)
     setSalvando(true)
     const base = {
       nome: nome.trim(),
       unidade,
-      custo_unitario: Number.isFinite(c) ? c : null,
+      tamanho_embalagem: Number.isFinite(t) && t > 0 ? t : null,
+      preco_embalagem: Number.isFinite(p) ? p : null,
+      custo_unitario: custoUnit,
       estoque_minimo: Number.isFinite(m) ? m : 0,
       marca_id: marcaId === 'nenhuma' ? null : marcaId,
       fornecedor_id: fornecedorId === 'nenhum' ? null : fornecedorId,
@@ -259,18 +269,35 @@ function IngredienteForm({
         <Label htmlFor="ing-nome">Nome</Label>
         <Input id="ing-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Leite condensado" />
       </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-2">
-          <Label htmlFor="ing-uni">Unidade</Label>
-          <Select value={unidade} onValueChange={setUnidade}>
-            <SelectTrigger id="ing-uni"><SelectValue /></SelectTrigger>
-            <SelectContent>{UNIDADES.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
-          </Select>
+      <div className="space-y-2">
+        <Label htmlFor="ing-uni">Unidade de uso na receita</Label>
+        <Select value={unidade} onValueChange={setUnidade}>
+          <SelectTrigger id="ing-uni" className="w-32"><SelectValue /></SelectTrigger>
+          <SelectContent>{UNIDADES.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">É como você usa na receita (g, ml, un…). Ex.: farinha em <strong>g</strong>.</p>
+      </div>
+
+      <div className="rounded-md border bg-muted/30 p-3 space-y-3">
+        <p className="text-sm font-medium">Como você compra</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="ing-tam">Tamanho da embalagem ({unidade})</Label>
+            <Input id="ing-tam" inputMode="decimal" value={tamanho} onChange={(e) => setTamanho(e.target.value)} placeholder={`Ex.: 1000`} />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ing-preco">Preço da embalagem (R$)</Label>
+            <Input id="ing-preco" inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} placeholder="Ex.: 5,00" />
+          </div>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="ing-custo">Custo por unidade (R$)</Label>
-          <Input id="ing-custo" inputMode="decimal" value={custo} onChange={(e) => setCusto(e.target.value)} placeholder="Ex.: 6,50" />
-        </div>
+        <p className="text-xs text-muted-foreground">
+          Ex.: um pacote de <strong>1000 {unidade}</strong> por <strong>R$ 5,00</strong>. Na receita você usa a quantidade real (ex.: 400 {unidade}).
+        </p>
+        {custoUnit != null && (
+          <p className="text-sm">
+            Custo por {unidade}: <strong className="text-primary">{formatBRL(custoUnit)}</strong>
+          </p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="ing-min">Estoque mínimo (aviso de baixo)</Label>
