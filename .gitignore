@@ -30,3 +30,6 @@ dist-ssr
 
 # zip de deploy gerado por 'npm run build' + empacotamento
 *.zip
+
+# pasta de trabalho do deploy (build extraido)
+site/
