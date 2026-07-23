@@ -12,7 +12,7 @@ SaaS de gestão para confeiteiros caseiros. Nome oficial em todo texto visível:
 ## Stack (fixa — não propor alternativas)
 - **Front:** React + Vite + TypeScript, Tailwind, shadcn/ui, lucide-react, react-router-dom, Recharts.
 - **Back:** Supabase — Postgres, Auth (email/senha), Edge Functions, migrations via Supabase CLI (`supabase db push`, `supabase functions deploy`).
-- **Deploy front:** Vercel.
+- **Deploy front:** **Hostinger** (hospedagem de arquivos estáticos). Build local com `npm run build` → subir o conteúdo de `dist/` para `public_html`. O `public/.htaccess` é obrigatório: sem ele, recarregar em `/painel` dá 404. Passo a passo em `docs/DEPLOY.md`. *(Decisão do usuário em 23/07/2026, substitui a Vercel.)*
 - Env: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (fornecidos pelo usuário). Client em `src/lib/supabase.ts`. Pastas: `src/pages`, `src/components`, `src/lib`.
 - `SUPABASE_SERVICE_ROLE_KEY` só nas Edge Functions (env da function), **nunca no front**.
 

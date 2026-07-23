@@ -178,7 +178,9 @@ export default function AppLayout() {
           </SidebarFooter>
         </Sidebar>
 
-        <SidebarInset>
+        {/* min-w-0: sem isso o conteúdo empurra a largura e a página inteira rola na horizontal
+            em telas estreitas, em vez de a tabela rolar dentro do próprio quadro. */}
+        <SidebarInset className="min-w-0">
           <header className="flex h-14 shrink-0 items-center gap-2 border-b px-4">
             <SidebarTrigger />
             <span className="text-sm text-muted-foreground">

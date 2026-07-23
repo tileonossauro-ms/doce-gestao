@@ -40,7 +40,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(data.session)
       setLoading(false)
     })
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => setSession(s))
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
+      setSession(s)
+      // Link de "esqueci minha senha": o Supabase já loga a pessoa, mas ela ainda
+      // precisa DEFINIR a nova senha — senão fica trancada de novo no próximo acesso.
+      if (event === 'PASSWORD_RECOVERY') window.location.assign('/configuracoes?nova-senha=1')
+    })
     return () => sub.subscription.unsubscribe()
   }, [])
 

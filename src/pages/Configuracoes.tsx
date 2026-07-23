@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Loader2, Save, RefreshCw, Wand2 } from 'lucide-react'
+import { Loader2, Save, RefreshCw, Wand2, KeyRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
@@ -149,6 +149,8 @@ export default function Configuracoes() {
         </CardContent>
       </Card>
 
+      <Seguranca />
+
       <CustoFixoAutomatico />
 
       <Card>
@@ -176,6 +178,63 @@ export default function Configuracoes() {
         </CardContent>
       </Card>
     </div>
+  )
+}
+
+/** Troca de senha. Também é o destino do link de "esqueci minha senha". */
+function Seguranca() {
+  const veioDoEmail = new URLSearchParams(window.location.search).has('nova-senha')
+  const [senha, setSenha] = useState('')
+  const [confirmar, setConfirmar] = useState('')
+  const [mostrar, setMostrar] = useState(false)
+  const [salvando, setSalvando] = useState(false)
+
+  async function trocar() {
+    if (senha.length < 6) return toast.error('A senha precisa ter pelo menos 6 caracteres.')
+    if (senha !== confirmar) return toast.error('As duas senhas não são iguais.')
+    setSalvando(true)
+    const { error } = await supabase.auth.updateUser({ password: senha })
+    setSalvando(false)
+    if (error) return toast.error('Erro ao trocar a senha: ' + error.message)
+    setSenha('')
+    setConfirmar('')
+    toast.success('Senha alterada! Use a nova no próximo acesso.')
+  }
+
+  return (
+    <Card className={veioDoEmail ? 'border-primary/40 bg-primary/5' : undefined}>
+      <CardHeader>
+        <CardTitle>Senha de acesso</CardTitle>
+        <CardDescription>
+          {veioDoEmail
+            ? 'Você entrou pelo link do e-mail. Defina agora a sua nova senha, senão o acesso antigo continua valendo.'
+            : 'Troque sua senha quando quiser. Mínimo de 6 caracteres.'}
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="cfg-senha">Nova senha</Label>
+            <Input id="cfg-senha" type={mostrar ? 'text' : 'password'} value={senha}
+              onChange={(e) => setSenha(e.target.value)} placeholder="Mínimo 6 caracteres" />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="cfg-senha2">Repita a nova senha</Label>
+            <Input id="cfg-senha2" type={mostrar ? 'text' : 'password'} value={confirmar}
+              onChange={(e) => setConfirmar(e.target.value)} placeholder="Digite de novo" />
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button onClick={trocar} disabled={salvando || !senha}>
+            {salvando ? <Loader2 className="animate-spin" /> : <KeyRound />}
+            Alterar senha
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => setMostrar((v) => !v)}>
+            {mostrar ? 'Ocultar senha' : 'Mostrar senha'}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   )
 }
 
