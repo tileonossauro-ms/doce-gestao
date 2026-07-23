@@ -13,6 +13,7 @@ import Painel from '@/pages/Painel'
 import FormasPagamento from '@/pages/FormasPagamento'
 import Categorias from '@/pages/Categorias'
 import Relatorios from '@/pages/Relatorios'
+import CustosFixos from '@/pages/CustosFixos'
 import SecaoEmBreve from '@/components/SecaoEmBreve'
 import { Toaster } from '@/components/ui/sonner'
 
@@ -36,7 +37,7 @@ function App() {
               <Route path="/agenda" element={<SecaoEmBreve titulo="Agenda" nota="Chega na Fase 11." />} />
               <Route path="/fornecedores" element={<SecaoEmBreve titulo="Fornecedores" nota="Chega na Fase 12." />} />
               <Route path="/marcas" element={<SecaoEmBreve titulo="Marcas" nota="Chega na Fase 12." />} />
-              <Route path="/custos-fixos" element={<SecaoEmBreve titulo="Custos fixos" nota="Chega na Fase 15." />} />
+              <Route path="/custos-fixos" element={<CustosFixos />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
               <Route index element={<Navigate to="/painel" replace />} />
             </Route>

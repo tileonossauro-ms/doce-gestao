@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { formatBRL, formatData, parseNum } from '@/lib/format'
+import Dre from '@/components/Dre'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -33,8 +34,11 @@ type Lancamento = {
   descricao: string | null
   valor: number
   pedido_id: string | null
+  categoria_id: string | null
   data: string
+  categoria: { nome: string } | null
 }
+type Categoria = { id: string; nome: string }
 
 const hojeISO = () => new Date().toISOString().slice(0, 10)
 
@@ -53,7 +57,9 @@ function diasAtras(n: number): string {
 
 export default function Financeiro() {
   const [lista, setLista] = useState<Lancamento[]>([])
+  const [categorias, setCategorias] = useState<Categoria[]>([])
   const [loading, setLoading] = useState(true)
+  const [aba, setAba] = useState<'lancamentos' | 'dre'>('lancamentos')
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroPeriodo, setFiltroPeriodo] = useState('mes')
   const [criar, setCriar] = useState(false)
@@ -61,9 +67,13 @@ export default function Financeiro() {
   const [excluir, setExcluir] = useState<Lancamento | null>(null)
 
   const carregar = useCallback(async () => {
-    const { data, error } = await supabase.from('lancamentos').select('*').order('data', { ascending: false })
-    if (error) toast.error('Erro ao carregar: ' + error.message)
-    setLista(((data as Lancamento[]) ?? []).map((l) => ({ ...l, valor: Number(l.valor) })))
+    const [l, k] = await Promise.all([
+      supabase.from('lancamentos').select('*, categoria:categorias_financeiras(nome)').order('data', { ascending: false }),
+      supabase.from('categorias_financeiras').select('id, nome').eq('ativo', true).order('nome'),
+    ])
+    if (l.error) toast.error('Erro ao carregar: ' + l.error.message)
+    setLista(((l.data as unknown as Lancamento[]) ?? []).map((x) => ({ ...x, valor: Number(x.valor) })))
+    setCategorias((k.data as Categoria[]) ?? [])
     setLoading(false)
   }, [])
 
@@ -104,9 +114,20 @@ export default function Financeiro() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold">Financeiro</h1>
-        <Button onClick={() => setCriar(true)}><Plus /> Novo lançamento</Button>
+        {aba === 'lancamentos' && <Button onClick={() => setCriar(true)}><Plus /> Novo lançamento</Button>}
       </div>
 
+      <div className="flex gap-2">
+        <Button variant={aba === 'lancamentos' ? 'default' : 'outline'} size="sm" onClick={() => setAba('lancamentos')}>
+          Lançamentos
+        </Button>
+        <Button variant={aba === 'dre' ? 'default' : 'outline'} size="sm" onClick={() => setAba('dre')}>
+          DRE (resultado do mês)
+        </Button>
+      </div>
+
+      {aba === 'dre' ? <Dre /> : (
+      <>
       <div className="grid gap-3 sm:grid-cols-3">
         <CardKpi titulo="Entradas do mês" valor={doMes.entradas} icone={<ArrowUpCircle className="size-5 text-green-600" />} cor="text-green-600" loading={loading} />
         <CardKpi titulo="Saídas do mês" valor={doMes.saidas} icone={<ArrowDownCircle className="size-5 text-red-600" />} cor="text-red-600" loading={loading} />
@@ -139,6 +160,7 @@ export default function Financeiro() {
             <TableRow>
               <TableHead>Data</TableHead>
               <TableHead>Descrição</TableHead>
+              <TableHead>Categoria</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead className="text-right">Valor</TableHead>
               <TableHead className="w-20 text-right">Ações</TableHead>
@@ -147,11 +169,11 @@ export default function Financeiro() {
           <TableBody>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               ))
             ) : filtrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5}>
+                <TableCell colSpan={6}>
                   <p className="py-10 text-center text-sm text-muted-foreground">
                     Nenhum lançamento neste filtro. Use "Novo lançamento" para registrar entradas e saídas.
                   </p>
@@ -162,6 +184,9 @@ export default function Financeiro() {
                 <TableRow key={l.id}>
                   <TableCell className="text-muted-foreground">{formatData(l.data)}</TableCell>
                   <TableCell className="font-medium">{l.descricao || '—'}</TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {l.categoria?.nome ?? (l.tipo === 'saida' ? <span className="text-amber-600">sem categoria</span> : '—')}
+                  </TableCell>
                   <TableCell>
                     <Badge
                       variant="outline"
@@ -201,6 +226,8 @@ export default function Financeiro() {
           </TableBody>
         </Table>
       </div>
+      </>
+      )}
 
       <Dialog open={criar} onOpenChange={setCriar}>
         <DialogContent>
@@ -208,7 +235,7 @@ export default function Financeiro() {
             <DialogTitle>Novo lançamento</DialogTitle>
             <DialogDescription>Registre uma entrada (recebimento) ou saída (gasto).</DialogDescription>
           </DialogHeader>
-          <LancamentoForm onSaved={carregar} onClose={() => setCriar(false)} />
+          <LancamentoForm categorias={categorias} onSaved={carregar} onClose={() => setCriar(false)} />
         </DialogContent>
       </Dialog>
 
@@ -219,7 +246,7 @@ export default function Financeiro() {
             <SheetDescription>Corrija os dados do lançamento.</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-6">
-            {editando && <LancamentoForm lancamento={editando} onSaved={carregar} onClose={() => setEditando(null)} />}
+            {editando && <LancamentoForm lancamento={editando} categorias={categorias} onSaved={carregar} onClose={() => setEditando(null)} />}
           </div>
         </SheetContent>
       </Sheet>
@@ -256,11 +283,14 @@ function CardKpi({ titulo, valor, icone, cor, loading }: { titulo: string; valor
   )
 }
 
-function LancamentoForm({ lancamento, onSaved, onClose }: { lancamento?: Lancamento; onSaved: () => void; onClose: () => void }) {
+function LancamentoForm({ lancamento, categorias, onSaved, onClose }: {
+  lancamento?: Lancamento; categorias: Categoria[]; onSaved: () => void; onClose: () => void
+}) {
   const { user } = useAuth()
   const [tipo, setTipo] = useState<'entrada' | 'saida'>(lancamento?.tipo ?? 'saida')
   const [descricao, setDescricao] = useState(lancamento?.descricao ?? '')
   const [valor, setValor] = useState(lancamento?.valor?.toString() ?? '')
+  const [categoriaId, setCategoriaId] = useState(lancamento?.categoria_id ?? 'nenhuma')
   const [data, setData] = useState(lancamento?.data ?? hojeISO())
   const [salvando, setSalvando] = useState(false)
 
@@ -270,7 +300,10 @@ function LancamentoForm({ lancamento, onSaved, onClose }: { lancamento?: Lancame
     if (!Number.isFinite(v) || v <= 0) return toast.error('Informe um valor maior que zero.')
     if (!data) return toast.error('Informe a data.')
     setSalvando(true)
-    const base = { tipo, descricao: descricao.trim() || null, valor: v, data }
+    const base = {
+      tipo, descricao: descricao.trim() || null, valor: v, data,
+      categoria_id: categoriaId === 'nenhuma' ? null : categoriaId,
+    }
     const { error } = lancamento
       ? await supabase.from('lancamentos').update(base).eq('id', lancamento.id)
       : await supabase.from('lancamentos').insert({ ...base, user_id: user.id })
@@ -303,9 +336,24 @@ function LancamentoForm({ lancamento, onSaved, onClose }: { lancamento?: Lancame
         <Label htmlFor="lan-desc">Descrição</Label>
         <Input id="lan-desc" value={descricao} onChange={(e) => setDescricao(e.target.value)} placeholder="Ex.: Compra de embalagens" />
       </div>
-      <div className="space-y-2">
-        <Label htmlFor="lan-data">Data</Label>
-        <Input id="lan-data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="lan-cat">Categoria</Label>
+          <Select value={categoriaId} onValueChange={setCategoriaId}>
+            <SelectTrigger id="lan-cat"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nenhuma">Sem categoria</SelectItem>
+              {categorias.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          {tipo === 'saida' && (
+            <p className="text-xs text-muted-foreground">A categoria é o que separa custo variável de custo fixo no DRE.</p>
+          )}
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="lan-data">Data</Label>
+          <Input id="lan-data" type="date" value={data} onChange={(e) => setData(e.target.value)} />
+        </div>
       </div>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
