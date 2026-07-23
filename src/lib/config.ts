@@ -20,3 +20,17 @@ export function getPercentuaisPadrao(): Percentuais {
 export function setPercentuaisPadrao(p: Percentuais): void {
   localStorage.setItem(CHAVE, JSON.stringify(p))
 }
+
+// Janela de análise: quantos dias de histórico as sugestões de compra/produção olham.
+// Antecipado da Fase 17 (lá vira coluna da tabela `perfis`); a Fase 10 já lê daqui.
+const CHAVE_JANELA = 'doce-gestao:janela-analise-dias'
+export const JANELAS_ANALISE = [30, 60, 90] as const
+
+export function getJanelaAnalise(): number {
+  const n = Number(localStorage.getItem(CHAVE_JANELA))
+  return JANELAS_ANALISE.includes(n as (typeof JANELAS_ANALISE)[number]) ? n : 60
+}
+
+export function setJanelaAnalise(dias: number): void {
+  localStorage.setItem(CHAVE_JANELA, String(dias))
+}

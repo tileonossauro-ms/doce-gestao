@@ -3,12 +3,15 @@ import { Loader2, Save } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
-import { getPercentuaisPadrao, setPercentuaisPadrao } from '@/lib/config'
+import { getJanelaAnalise, getPercentuaisPadrao, JANELAS_ANALISE, setJanelaAnalise, setPercentuaisPadrao } from '@/lib/config'
 import { parseNum } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 
 export default function Configuracoes() {
   const { user } = useAuth()
@@ -19,6 +22,7 @@ export default function Configuracoes() {
   const [indireto, setIndireto] = useState(padrao.indireto.toString())
   const [margem, setMargem] = useState(padrao.margem.toString())
   const [taxas, setTaxas] = useState(padrao.taxas.toString())
+  const [janela, setJanela] = useState(getJanelaAnalise().toString())
 
   async function salvarPerfil() {
     setSalvandoPerfil(true)
@@ -88,6 +92,28 @@ export default function Configuracoes() {
           <Button onClick={salvarPercentuais}>
             <Save /> Salvar percentuais
           </Button>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Janela de análise</CardTitle>
+          <CardDescription>
+            Quantos dias de histórico os Relatórios olham para sugerir compra de ingredientes e quanto produzir por semana.
+            Janela curta reage rápido a mudanças; janela longa é mais estável.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Label htmlFor="cfg-janela">Período analisado</Label>
+          <Select
+            value={janela}
+            onValueChange={(v) => { setJanela(v); setJanelaAnalise(Number(v)); toast.success('Janela de análise salva!') }}
+          >
+            <SelectTrigger id="cfg-janela" className="w-48"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {JANELAS_ANALISE.map((d) => <SelectItem key={d} value={String(d)}>Últimos {d} dias</SelectItem>)}
+            </SelectContent>
+          </Select>
         </CardContent>
       </Card>
     </div>
