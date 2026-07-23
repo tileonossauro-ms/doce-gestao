@@ -187,6 +187,9 @@ function CustoFixoAutomatico() {
 
   if (!perfil) return null
   const automatico = perfil.modo_custo_fixo === 'automatico'
+  // Margem + taxas + custo fixo têm que somar menos de 100%, senão nenhum preço fecha a conta.
+  const teto = 100 - perfil.pct_margem_padrao - perfil.pct_taxas_padrao
+  const inviavel = !!calculo && calculo.pct >= teto
 
   async function calcular() {
     if (!perfil) return
@@ -259,7 +262,7 @@ function CustoFixoAutomatico() {
               <Button variant="outline" size="sm" onClick={calcular} disabled={calculando}>
                 {calculando ? <Loader2 className="animate-spin" /> : <RefreshCw />} Atualizar cálculo
               </Button>
-              {calculo && (
+              {calculo && !inviavel && (
                 <Button
                   size="sm"
                   onClick={async () => {
@@ -278,10 +281,23 @@ function CustoFixoAutomatico() {
                   <strong>{formatBRL(calculo.faturamento)}</strong> ({calculo.fonte}) ={' '}
                   <strong className="text-primary">{formatNum(calculo.pct, 1)}%</strong>
                 </p>
-                <p className="text-xs text-muted-foreground">
-                  Ou seja: de cada R$ 100 vendidos, {formatBRL(calculo.pct)} precisam ir para as contas fixas.
-                  O cálculo só roda quando você clica — nada muda sozinho nas suas receitas.
-                </p>
+                {inviavel ? (
+                  <div className="rounded-md border border-red-300 bg-red-50 px-3 py-2 text-red-800">
+                    <p className="font-medium">Esse percentual não cabe no preço.</p>
+                    <p className="mt-1 text-xs">
+                      Com margem de {formatNum(perfil.pct_margem_padrao, 1)}% e taxas de {formatNum(perfil.pct_taxas_padrao, 1)}%,
+                      o custo fixo teria que ficar abaixo de {formatNum(teto, 1)}% — e o cálculo deu {formatNum(calculo.pct, 1)}%.
+                      Traduzindo: o faturamento de hoje não paga as contas fixas, e nenhum preço resolve isso sozinho.
+                      Os caminhos reais são vender mais, cortar custo fixo ou aceitar um custo fixo % menor e cobrir a diferença com volume.
+                      Por segurança, não dá para aplicar esse valor.
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    Ou seja: de cada R$ 100 vendidos, {formatBRL(calculo.pct)} precisam ir para as contas fixas.
+                    O cálculo só roda quando você clica — nada muda sozinho nas suas receitas.
+                  </p>
+                )}
               </div>
             ) : (
               <p className="text-sm text-muted-foreground">Clique em "Atualizar cálculo" para ver o percentual sugerido.</p>
