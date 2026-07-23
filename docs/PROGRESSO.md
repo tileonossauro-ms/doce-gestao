@@ -1,5 +1,8 @@
 # Progresso — Doce Gestão
 
+> **📍 STATUS ATUAL (retomar aqui):** Fase 9 (Estoque) com **código pronto e commitado**. **Próximo passo:** o usuário rodar `npx supabase db push` (aplica `20260722180000_estoque.sql`); depois **verificar a baixa de estoque** (lançar compra, pagar um pedido, conferir consumo por ingrediente, idempotência). Em seguida: **Fase 10 — Relatórios**. Ordem completa e regras: ver abaixo + `CLAUDE.md`.
+
+
 Ao concluir cada fase: marcar aqui, resumir em 3–5 linhas, listar o que testar, aguardar OK. "continue" = retomar a partir daqui.
 
 > **⚠️ SEMPRE antes de iniciar uma fase:** revisar as fases futuras abaixo e antecipar o que der para fazer junto sem retrabalho (colunas/tabelas na mesma migration, triggers/telas já sendo mexidas). Anotar aqui o que foi antecipado. (Regra permanente — CLAUDE.md › Como trabalhar.)
