@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, ArrowUpCircle, ArrowDownCircle, Wallet, Loader2 } from 'lucide-react'
+import { Plus, ArrowUpCircle, ArrowDownCircle, Wallet, Loader2, Pencil, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
@@ -16,6 +16,13 @@ import {
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle,
+} from '@/components/ui/sheet'
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
@@ -50,6 +57,8 @@ export default function Financeiro() {
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroPeriodo, setFiltroPeriodo] = useState('mes')
   const [criar, setCriar] = useState(false)
+  const [editando, setEditando] = useState<Lancamento | null>(null)
+  const [excluir, setExcluir] = useState<Lancamento | null>(null)
 
   const carregar = useCallback(async () => {
     const { data, error } = await supabase.from('lancamentos').select('*').order('data', { ascending: false })
@@ -61,6 +70,17 @@ export default function Financeiro() {
   useEffect(() => {
     carregar()
   }, [carregar])
+
+  async function confirmarExclusao() {
+    if (!excluir) return
+    const { error } = await supabase.from('lancamentos').delete().eq('id', excluir.id)
+    if (error) toast.error('Erro ao excluir: ' + error.message)
+    else {
+      toast.success('Lançamento excluído.')
+      carregar()
+    }
+    setExcluir(null)
+  }
 
   // Cards: sempre o mês-calendário atual.
   const doMes = useMemo(() => {
@@ -121,16 +141,17 @@ export default function Financeiro() {
               <TableHead>Descrição</TableHead>
               <TableHead>Tipo</TableHead>
               <TableHead className="text-right">Valor</TableHead>
+              <TableHead className="w-20 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={4}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               ))
             ) : filtrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={4}>
+                <TableCell colSpan={5}>
                   <p className="py-10 text-center text-sm text-muted-foreground">
                     Nenhum lançamento neste filtro. Use "Novo lançamento" para registrar entradas e saídas.
                   </p>
@@ -152,6 +173,28 @@ export default function Financeiro() {
                   <TableCell className={`text-right font-medium ${l.tipo === 'entrada' ? 'text-green-700' : 'text-red-700'}`}>
                     {l.tipo === 'entrada' ? '+' : '−'} {formatBRL(l.valor)}
                   </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost" size="icon"
+                        onClick={() => setEditando(l)}
+                        disabled={!!l.pedido_id}
+                        title={l.pedido_id ? 'Lançamento gerado por um pedido — edite pelo pedido' : 'Editar'}
+                        aria-label="Editar"
+                      >
+                        <Pencil className="text-muted-foreground" />
+                      </Button>
+                      <Button
+                        variant="ghost" size="icon"
+                        onClick={() => setExcluir(l)}
+                        disabled={!!l.pedido_id}
+                        title={l.pedido_id ? 'Lançamento gerado por um pedido — não pode excluir aqui' : 'Excluir'}
+                        aria-label="Excluir"
+                      >
+                        <Trash2 className="text-muted-foreground" />
+                      </Button>
+                    </div>
+                  </TableCell>
                 </TableRow>
               ))
             )}
@@ -168,6 +211,33 @@ export default function Financeiro() {
           <LancamentoForm onSaved={carregar} onClose={() => setCriar(false)} />
         </DialogContent>
       </Dialog>
+
+      <Sheet open={!!editando} onOpenChange={(o) => !o && setEditando(null)}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Editar lançamento</SheetTitle>
+            <SheetDescription>Corrija os dados do lançamento.</SheetDescription>
+          </SheetHeader>
+          <div className="px-4 pb-6">
+            {editando && <LancamentoForm lancamento={editando} onSaved={carregar} onClose={() => setEditando(null)} />}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      <AlertDialog open={!!excluir} onOpenChange={(o) => !o && setExcluir(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lançamento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              "{excluir?.descricao || (excluir?.tipo === 'entrada' ? 'Entrada' : 'Saída')}" no valor de {excluir ? formatBRL(excluir.valor) : ''} será removido. Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmarExclusao}>Excluir</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
@@ -186,12 +256,12 @@ function CardKpi({ titulo, valor, icone, cor, loading }: { titulo: string; valor
   )
 }
 
-function LancamentoForm({ onSaved, onClose }: { onSaved: () => void; onClose: () => void }) {
+function LancamentoForm({ lancamento, onSaved, onClose }: { lancamento?: Lancamento; onSaved: () => void; onClose: () => void }) {
   const { user } = useAuth()
-  const [tipo, setTipo] = useState<'entrada' | 'saida'>('saida')
-  const [descricao, setDescricao] = useState('')
-  const [valor, setValor] = useState('')
-  const [data, setData] = useState(hojeISO())
+  const [tipo, setTipo] = useState<'entrada' | 'saida'>(lancamento?.tipo ?? 'saida')
+  const [descricao, setDescricao] = useState(lancamento?.descricao ?? '')
+  const [valor, setValor] = useState(lancamento?.valor?.toString() ?? '')
+  const [data, setData] = useState(lancamento?.data ?? hojeISO())
   const [salvando, setSalvando] = useState(false)
 
   async function salvar() {
@@ -200,16 +270,13 @@ function LancamentoForm({ onSaved, onClose }: { onSaved: () => void; onClose: ()
     if (!Number.isFinite(v) || v <= 0) return toast.error('Informe um valor maior que zero.')
     if (!data) return toast.error('Informe a data.')
     setSalvando(true)
-    const { error } = await supabase.from('lancamentos').insert({
-      user_id: user.id,
-      tipo,
-      descricao: descricao.trim() || null,
-      valor: v,
-      data,
-    })
+    const base = { tipo, descricao: descricao.trim() || null, valor: v, data }
+    const { error } = lancamento
+      ? await supabase.from('lancamentos').update(base).eq('id', lancamento.id)
+      : await supabase.from('lancamentos').insert({ ...base, user_id: user.id })
     setSalvando(false)
     if (error) return toast.error('Erro ao salvar: ' + error.message)
-    toast.success('Lançamento registrado!')
+    toast.success(lancamento ? 'Lançamento atualizado!' : 'Lançamento registrado!')
     onSaved()
     onClose()
   }
@@ -244,7 +311,7 @@ function LancamentoForm({ onSaved, onClose }: { onSaved: () => void; onClose: ()
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
         <Button onClick={salvar} disabled={salvando}>
           {salvando && <Loader2 className="animate-spin" />}
-          Registrar
+          {lancamento ? 'Salvar' : 'Registrar'}
         </Button>
       </div>
     </div>

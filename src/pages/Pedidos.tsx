@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, Pencil, Trash2, ClipboardList, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, ClipboardList, Loader2, CheckCircle2, AlertTriangle } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
@@ -60,6 +60,8 @@ export default function Pedidos() {
   const [editando, setEditando] = useState<Pedido | null>(null)
   const [excluir, setExcluir] = useState<Pedido | null>(null)
   const [confirmandoId, setConfirmandoId] = useState<string | null>(null)
+  const [busca, setBusca] = useState('')
+  const [filtroStatus, setFiltroStatus] = useState('todos')
 
   const carregar = useCallback(async () => {
     const [p, c, r, l] = await Promise.all([
@@ -82,6 +84,18 @@ export default function Pedidos() {
   useEffect(() => {
     carregar()
   }, [carregar])
+
+  const filtrados = useMemo(() => {
+    const t = busca.trim().toLowerCase()
+    return pedidos.filter((p) => {
+      const okBusca =
+        !t ||
+        (p.cliente?.nome ?? '').toLowerCase().includes(t) ||
+        (p.receita?.nome ?? '').toLowerCase().includes(t)
+      const okStatus = filtroStatus === 'todos' || p.status === filtroStatus
+      return okBusca && okStatus
+    })
+  }, [pedidos, busca, filtroStatus])
 
   async function confirmar(pedido: Pedido) {
     setConfirmandoId(pedido.id)
@@ -120,6 +134,22 @@ export default function Pedidos() {
         </p>
       )}
 
+      {pedidos.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          <div className="relative flex-1 min-w-52">
+            <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input className="pl-8" placeholder="Buscar por cliente ou receita..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+          </div>
+          <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os status</SelectItem>
+              {STATUS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -150,8 +180,14 @@ export default function Pedidos() {
                   </div>
                 </TableCell>
               </TableRow>
+            ) : filtrados.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={7}>
+                  <p className="py-10 text-center text-sm text-muted-foreground">Nenhum pedido encontrado com esse filtro.</p>
+                </TableCell>
+              </TableRow>
             ) : (
-              pedidos.map((p) => {
+              filtrados.map((p) => {
                 const confirmado = confirmados.has(p.id)
                 return (
                   <TableRow key={p.id}>
