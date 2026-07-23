@@ -2,6 +2,8 @@
 
 Ao concluir cada fase: marcar aqui, resumir em 3–5 linhas, listar o que testar, aguardar OK. "continue" = retomar a partir daqui.
 
+> **⚠️ SEMPRE antes de iniciar uma fase:** revisar as fases futuras abaixo e antecipar o que der para fazer junto sem retrabalho (colunas/tabelas na mesma migration, triggers/telas já sendo mexidas). Anotar aqui o que foi antecipado. (Regra permanente — CLAUDE.md › Como trabalhar.)
+
 ## Fases
 
 - [x] **Fase 0** — `CLAUDE.md` + `docs/PROGRESSO.md`.
@@ -15,7 +17,8 @@ Ao concluir cada fase: marcar aqui, resumir em 3–5 linhas, listar o que testar
 - [ ] **Fase 8** — Polish (loading em todo botão, empty states, não quebrar em tela pequena, revisão de RLS) + deploy Vercel + teste do fluxo completo no desktop.
 
 ### Escopo ampliado (entram DEPOIS da Fase 8)
-- [ ] **Fase 9** — Controle de Estoque.
+- [x] **Fase 9** — Controle de Estoque (código pronto; **pendente `npx supabase db push`** de `20260722180000_estoque.sql`). Feito: `ingredientes.estoque_atual` + **`estoque_minimo` (antecipado p/ badge amarelo e F10)**; tabela `movimentacoes_estoque` (RLS) com trigger que aplica o delta no estoque; **reaproveitei o gatilho `pedido_pago_entrada`** (F14) para gerar `consumo` por item na baixa (idempotente); UI Ingredientes (coluna estoque com badge vermelho/amarelo + botão "Lançar compra/ajuste"); Painel "Precisa de atenção" lista estoque baixo/negativo. Não backfilla consumo histórico (estoque começa em 0). Antecipações registradas conforme a regra do topo.
+  - Spec original:
   - A) Migration incremental (RLS igual às demais): `ingredientes.estoque_atual numeric default 0`; `pedidos.custo_unitario_snapshot numeric`; nova tabela `movimentacoes_estoque` (id, user_id, ingrediente_id FK, tipo `entrada`/`ajuste`/`consumo`, quantidade numeric, pedido_id FK nullable, observacao, data date default now(), criado_em).
   - B) Estender `confirmar_pedido` (function + trigger): além do lançamento, gravar `custo_unitario_snapshot` e gerar `consumo` por ingrediente (`(qtd_receita ÷ rendimento) × qtd_pedido`), descontando de `estoque_atual`. Idempotente. Estoque pode ficar negativo (alerta, nunca bloqueio).
   - C) UI: `/ingredientes` coluna estoque com badge (vermelho negativo / amarelo baixo) + botão "Lançar compra/ajuste" (Dialog); `/painel` "Precisa de atenção" lista estoque negativo/baixo.

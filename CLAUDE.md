@@ -48,5 +48,6 @@ SaaS de gestão para confeiteiros caseiros. Nome oficial em todo texto visível:
 
 ## Como trabalhar
 - Trabalhar por fases (ver `docs/PROGRESSO.md`). Ao fim de cada fase: parar, resumir em 3–5 linhas, listar o que testar, aguardar OK.
+- **Olhar sempre à frente (antecipação):** antes de iniciar cada fase, revisar as fases futuras no PROGRESSO e trazer para a fase atual o que puder ser feito junto sem retrabalho — principalmente **colunas/tabelas na mesma migration** e reaproveitamento de triggers/telas já sendo tocadas. Registrar no PROGRESSO o que foi antecipado (ou por que não). É a generalização da "exceção A2".
 - Atualizar `docs/PROGRESSO.md` ao concluir cada fase. "continue" = retomar a partir dele.
 - Conflito técnico com o pedido: apontar e propor — **não** decidir sozinho mudanças de escopo, schema ou contrato.

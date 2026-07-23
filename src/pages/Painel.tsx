@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  DollarSign, TrendingUp, ClipboardList, Receipt, AlertTriangle, Cake, Truck,
+  DollarSign, TrendingUp, ClipboardList, Receipt, AlertTriangle, Cake, Truck, PackageX,
 } from 'lucide-react'
 import {
   Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from 'recharts'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
-import { formatBRL, formatData } from '@/lib/format'
+import { formatBRL, formatData, formatNum } from '@/lib/format'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -44,23 +44,28 @@ function diffDias(aISO: string, bISO: string): number {
   return Math.floor((a - b) / 86_400_000)
 }
 
+type Ingrediente = { id: string; nome: string; unidade: string; estoque_atual: number; estoque_minimo: number }
+
 export default function Painel() {
   const [lancamentos, setLancamentos] = useState<Lancamento[]>([])
   const [pedidos, setPedidos] = useState<Pedido[]>([])
   const [clientes, setClientes] = useState<Cliente[]>([])
+  const [ingredientes, setIngredientes] = useState<Ingrediente[]>([])
   const [loading, setLoading] = useState(true)
   const [periodo, setPeriodo] = useState('30')
 
   const carregar = useCallback(async () => {
-    const [l, p, c] = await Promise.all([
+    const [l, p, c, g] = await Promise.all([
       supabase.from('lancamentos').select('*').order('data', { ascending: false }),
       supabase.from('pedidos').select('id, status, data_entrega, flag_revisao, cliente:clientes(nome), itens:pedido_itens(receita:receitas(nome))'),
       supabase.from('clientes').select('id, nome, telefone, aniversario'),
+      supabase.from('ingredientes').select('id, nome, unidade, estoque_atual, estoque_minimo'),
     ])
     if (l.error) toast.error('Erro ao carregar painel: ' + l.error.message)
     setLancamentos(((l.data as Lancamento[]) ?? []).map((x) => ({ ...x, valor: Number(x.valor) })))
     setPedidos((p.data as unknown as Pedido[]) ?? [])
     setClientes((c.data as Cliente[]) ?? [])
+    setIngredientes(((g.data as Ingrediente[]) ?? []).map((x) => ({ ...x, estoque_atual: Number(x.estoque_atual), estoque_minimo: Number(x.estoque_minimo) })))
     setLoading(false)
   }, [])
 
@@ -140,8 +145,11 @@ export default function Painel() {
     const entregas = pedidos
       .filter((p) => p.data_entrega && p.data_entrega >= hoje() && p.data_entrega <= limite && p.status !== 'entregue')
       .sort((a, b) => (a.data_entrega! < b.data_entrega! ? -1 : 1))
-    return { revisar, aniversariantes, entregas }
-  }, [pedidos, clientes, hojeMMDD])
+    const estoque = ingredientes
+      .filter((g) => g.estoque_atual < 0 || (g.estoque_minimo > 0 && g.estoque_atual < g.estoque_minimo))
+      .sort((a, b) => a.estoque_atual - b.estoque_atual)
+    return { revisar, aniversariantes, entregas, estoque }
+  }, [pedidos, clientes, ingredientes, hojeMMDD])
 
   const atividade = useMemo(() => lancamentos.slice(0, 6), [lancamentos])
 
@@ -229,6 +237,13 @@ export default function Painel() {
             <Linha icone={<Truck className="size-4 text-blue-500" />} titulo="Entregas nos próximos 7 dias" vazio="Nenhuma entrega próxima">
               {atencao.entregas.map((p) => (
                 <li key={p.id}>{formatData(p.data_entrega)} · {p.cliente?.nome ?? '—'} ({itensResumo(p)})</li>
+              ))}
+            </Linha>
+            <Linha icone={<PackageX className="size-4 text-red-500" />} titulo="Estoque baixo ou negativo" vazio="Estoque em dia">
+              {atencao.estoque.map((g) => (
+                <li key={g.id} className={g.estoque_atual < 0 ? 'text-red-600' : ''}>
+                  {g.nome}: {formatNum(g.estoque_atual)} {g.unidade}
+                </li>
               ))}
             </Linha>
           </CardContent>
