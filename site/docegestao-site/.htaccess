@@ -1,0 +1,67 @@
+# Doce Gestão — configuração do servidor da Hostinger (Apache/LiteSpeed).
+# Este arquivo é copiado para dentro de dist/ no build e sobe junto com o site.
+
+# ------------------------------------------------------------------
+# 1) Rotas do sistema (o mais importante)
+# O Doce Gestão é uma "single page application": só existe um arquivo
+# index.html, e o endereço muda no navegador sem pedir página nova ao
+# servidor. Sem a regra abaixo, abrir/recarregar direto em /painel ou
+# /pedidos daria "404 Not Found", porque não existe uma pasta com esse
+# nome. A regra manda tudo que não for arquivo real para o index.html,
+# e o sistema resolve a rota do lado do navegador.
+# ------------------------------------------------------------------
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Arquivos e pastas que existem de verdade são servidos normalmente.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Qualquer outro endereço abre o app.
+  RewriteRule . /index.html [L]
+</IfModule>
+
+# ------------------------------------------------------------------
+# 2) Cache
+# Os arquivos em /assets têm o conteúdo no próprio nome (ex.: app-a1b2c3.js),
+# então podem ficar cacheados por 1 ano: quando o site muda, o nome muda.
+# Já o index.html NÃO pode ser cacheado, senão o navegador continuaria
+# abrindo a versão antiga do sistema depois de uma atualização.
+# ------------------------------------------------------------------
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+  ExpiresByType image/webp "access plus 1 year"
+  ExpiresByType font/woff2 "access plus 1 year"
+</IfModule>
+
+<FilesMatch "index\.html$">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache, must-revalidate"
+  </IfModule>
+</FilesMatch>
+
+# ------------------------------------------------------------------
+# 3) Compressão (site abre mais rápido)
+# ------------------------------------------------------------------
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE text/html text/css text/plain
+  AddOutputFilterByType DEFLATE application/javascript application/json
+  AddOutputFilterByType DEFLATE image/svg+xml
+</IfModule>
+
+# ------------------------------------------------------------------
+# 4) Segurança básica
+# ------------------------------------------------------------------
+<IfModule mod_headers.c>
+  Header set X-Content-Type-Options "nosniff"
+  Header set X-Frame-Options "SAMEORIGIN"
+  Header set Referrer-Policy "strict-origin-when-cross-origin"
+</IfModule>
+
+# Não deixa listar o conteúdo das pastas.
+Options -Indexes

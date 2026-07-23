@@ -1,6 +1,6 @@
 # Progresso — Doce Gestão
 
-> **📍 STATUS ATUAL (retomar aqui):** Fase 8 (polish + preparação de deploy) **concluída e verificada** — RLS reconferido na prática, layout sem estouro em 375/768px, build de produção testado. **Próximo passo: subir na Hostinger** seguindo `docs/DEPLOY.md` (falta domínio + upload + Site URL no Supabase). Depois: Fase 11 (Agenda), 12 (Fornecedores/Marcas), 18 (Básico/Pró) e 19 (Superadmin). Ordem completa e regras: ver abaixo + `CLAUDE.md`.
+> **📍 STATUS ATUAL (retomar aqui):** **SISTEMA NO AR** em https://docegestao.voltaregestao.com.br (Hostinger, subdomínio; deploy manual via zip do `dist/`, Site URL/Redirect configurados no Supabase). Fase 8 concluída. **Próximo passo (a combinar):** Fase 11 (Agenda), 12 (Fornecedores/Marcas), 18 (Básico/Pró), 19 (Superadmin). Pendências abertas: limpar dados de teste da conta `teste@docegestao.com` antes de mostrar às confeiteiras; `conta_no_dre` não editável na tela; criação de perfil no signup ainda não confirmada com conta real. Ordem/regras: ver abaixo + `CLAUDE.md`.
 
 
 Ao concluir cada fase: marcar aqui, resumir em 3–5 linhas, listar o que testar, aguardar OK. "continue" = retomar a partir daqui.
