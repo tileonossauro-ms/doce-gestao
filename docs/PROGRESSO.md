@@ -47,9 +47,22 @@ Ao concluir cada fase: marcar aqui, resumir em 3–5 linhas, listar o que testar
   4. `calcular_preco` volta a ser simples: lê só os 4 percentuais salvos na receita (indireto, margem, taxas, custo fixo) e aplica a fórmula. Não consulta `custos_fixos`/`pedido_itens` em runtime — isso fica só no passo 3 (Configurações).
   5. UI calculadora (Nova/Editar Receita): add campo "Custo fixo (%)" ao lado dos outros três, pré-preenchido pelo padrão, editável.
   - **Ao implementar:** atualizar a fórmula (regra 2) no CLAUDE.md — 4 percentuais no denominador. Depende de `custos_fixos` (F15) para o modo automático → fazer **após a F15**. Refs a esclarecer: `estimativa_faturamento_mensal` (campo de config de spec anterior não recebida).
+- [ ] **Fase 18** — **Plano Básico / Pró** (gating de interface):
+  - Config do usuário ganha `plano` ('basico'|'pro', default basico). Troca manual no banco (sem checkout agora).
+  - Guard: se `basico`, rotas/itens marcados como Pró mostram "Recurso do plano Pró — disponível em breve" e o item some/desabilita no menu (só avisa, não vende).
+  - **Pró:** DRE completo (F15); calculadora com rateio de custo fixo + modo "lucro em R$" (F17 completo — no Básico a calculadora fica só com indireto/margem/taxas); Fornecedores e Marcas (essas 2 abas de Cadastros); relatórios avançados (sugestão estoque/produção, clientes sumidos, vendas por dia da semana).
+  - **Básico:** ingredientes, receitas (calc simples), clientes, pedidos, estoque, agenda, financeiro, painel, formas de pagamento, categorias, relatórios essenciais (ticket médio, produtos mais vendidos, margem por produto, melhores clientes).
+  - ⚠️ Pendência de segurança pré-lançamento (não agora): reforçar o gating com checagem de `plano` nas Edge Functions/RLS das tabelas exclusivas do Pró (fornecedores, marcas, custos_fixos). *(Obs.: a spec 18.5 também lista categorias_financeiras como exclusiva, mas 18.4 a coloca no Básico — resolver essa contradição ao implementar.)*
+- [ ] **Fase 19** — **Painel Superadmin** (gestão manual, sem billing):
+  - Config do usuário ganha `is_superadmin` boolean default false (marcado à mão só na conta do Leonardo).
+  - RLS: policy nas tabelas de **perfil/config** permitindo SELECT de todas as linhas quando `is_superadmin`; **dados de negócio (clientes/pedidos/etc.) continuam privados** — superadmin só vê metadados de conta.
+  - Rota `/admin` fora do menu, guard redireciona não-admin p/ `/painel`.
+  - Lista de contas: nome, email, cadastro, plano (+trocar), status conta (ativo/suspenso), pagamento do mês (em dia/pendente, toggle manual), última atividade. Suspender = toggle que bloqueia login (checar no guard geral). Métricas: contas ativas, por plano, MRR estimado, pendentes do mês.
+  - **Dependência:** exige uma tabela `perfis`/`configuracoes` (1 linha por usuário, criada no signup via trigger) guardando plano, is_superadmin, status conta, status pagamento, + os campos de config das F17 (modo_custo_fixo, janela_analise_dias, percentuais padrão). Hoje config é localStorage + user_metadata — ao chegar em F17/18/19, **introduzir essa tabela** e migrar. Última atividade = max(data de lançamento/pedido).
 
 ## Ordem recomendada do backlog (dependências)
-16 ✅ → 14 (pedido multi-item, usa FKs de 16) → 9 (estoque por pedido_itens) → 10 (relatórios por pedido_itens, janela da F17) → 15 (custos/DRE, usa categorias) → 17 (custo fixo na receita, usa custos_fixos) → 11 (agenda) → 12 (fornecedores/marcas). **Confirmar com o usuário antes de cada grande fase.**
+16 ✅ → 14 ✅ (aguardando db push) → 9 (estoque por pedido_itens) → 10 (relatórios por pedido_itens, janela da F17) → 15 (custos/DRE, usa categorias) → 17 (custo fixo na receita, usa custos_fixos; introduz tabela `perfis`) → 11 (agenda) → 12 (fornecedores/marcas) → 18 (Básico/Pró, usa `perfis`) → 19 (superadmin, usa `perfis`). **Confirmar com o usuário antes de cada grande fase.**
+- **Tabela `perfis`/`configuracoes`** (1 linha/usuário) vira dependência comum das F17/18/19 — planejar sua introdução na F17.
 
 ## Notas
 - Env do usuário já configurado no `.env` (Supabase). Usuário de teste: `teste@docegestao.com` / `doce123456`.
