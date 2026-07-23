@@ -25,6 +25,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { useSort, SortHead } from '@/components/SortHead'
 
 type Categoria = { id: string; nome: string; tipo: string }
 type CustoFixo = {
@@ -73,6 +74,12 @@ export default function CustosFixos() {
     [lista],
   )
 
+  const { sorted, sort, toggle } = useSort(
+    filtrados,
+    (c, k) => (k === 'categoria' ? c.categoria?.nome : (c as unknown as Record<string, unknown>)[k]),
+    { key: 'nome', dir: 'asc' },
+  )
+
   async function confirmarExclusao() {
     if (!excluir) return
     const { error } = await supabase.from('custos_fixos').delete().eq('id', excluir.id)
@@ -111,11 +118,11 @@ export default function CustosFixos() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead className="text-right">Valor por mês</TableHead>
-              <TableHead>Vigência</TableHead>
-              <TableHead>Situação</TableHead>
+              <SortHead sortKey="nome" sort={sort} onSort={toggle}>Nome</SortHead>
+              <SortHead sortKey="categoria" sort={sort} onSort={toggle}>Categoria</SortHead>
+              <SortHead sortKey="valor_mensal" sort={sort} onSort={toggle} className="text-right">Valor por mês</SortHead>
+              <SortHead sortKey="inicio" sort={sort} onSort={toggle}>Vigência</SortHead>
+              <SortHead sortKey="fim" sort={sort} onSort={toggle}>Situação</SortHead>
               <TableHead className="w-24 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -139,7 +146,7 @@ export default function CustosFixos() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtrados.map((c) => (
+              sorted.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell className="font-medium">{c.nome}</TableCell>
                   <TableCell className="text-muted-foreground">{c.categoria?.nome ?? '—'}</TableCell>

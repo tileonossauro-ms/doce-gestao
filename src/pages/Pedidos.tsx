@@ -25,6 +25,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { useSort, SortHead } from '@/components/SortHead'
 
 type Cliente = { id: string; nome: string }
 type Receita = { id: string; nome: string; preco_sugerido: number | null }
@@ -97,6 +98,12 @@ export default function Pedidos() {
     })
   }, [pedidos, busca, filtroStatus])
 
+  const { sorted, sort, toggle } = useSort(
+    filtrados,
+    (p, k) => (k === 'cliente' ? p.cliente?.nome : (p as unknown as Record<string, unknown>)[k]),
+    { key: 'data_entrega', dir: 'desc' },
+  )
+
   async function confirmarExclusao() {
     if (!excluir) return
     const { error } = await supabase.from('pedidos').delete().eq('id', excluir.id)
@@ -148,12 +155,12 @@ export default function Pedidos() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Cliente</TableHead>
+              <SortHead sortKey="cliente" sort={sort} onSort={toggle}>Cliente</SortHead>
               <TableHead>Itens</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead>Produção</TableHead>
-              <TableHead>Pagamento</TableHead>
-              <TableHead>Entrega</TableHead>
+              <SortHead sortKey="valor_total" sort={sort} onSort={toggle} className="text-right">Valor</SortHead>
+              <SortHead sortKey="status" sort={sort} onSort={toggle}>Produção</SortHead>
+              <SortHead sortKey="status_pagamento" sort={sort} onSort={toggle}>Pagamento</SortHead>
+              <SortHead sortKey="data_entrega" sort={sort} onSort={toggle}>Entrega</SortHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -175,7 +182,7 @@ export default function Pedidos() {
             ) : filtrados.length === 0 ? (
               <TableRow><TableCell colSpan={7}><p className="py-10 text-center text-sm text-muted-foreground">Nenhum pedido encontrado com esse filtro.</p></TableCell></TableRow>
             ) : (
-              filtrados.map((p) => {
+              sorted.map((p) => {
                 const pago = p.status_pagamento === 'pago'
                 const itensTxt = p.itens.map((i) => `${i.receita?.nome ?? '?'} ×${i.quantidade}`).join(', ')
                 return (

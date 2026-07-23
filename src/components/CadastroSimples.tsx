@@ -24,6 +24,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { useSort, SortHead } from '@/components/SortHead'
 
 export type Campo = {
   key: string
@@ -72,6 +73,12 @@ export default function CadastroSimples({
     return lista.filter((r) => String(r[primeiroCampo] ?? '').toLowerCase().includes(t))
   }, [lista, busca, primeiroCampo])
 
+  const getVal = useCallback(
+    (r: Registro, k: string) => (k === 'ativo' ? r.ativo !== false : r[k]),
+    [],
+  )
+  const { sorted, sort, toggle } = useSort(filtrados, getVal, { key: primeiroCampo, dir: 'asc' })
+
   function rotuloOpcao(campo: Campo, valor: unknown) {
     if (campo.tipo === 'select') return campo.opcoes?.find((o) => o.value === valor)?.label ?? String(valor ?? '—')
     return String(valor ?? '—')
@@ -108,8 +115,8 @@ export default function CadastroSimples({
         <Table>
           <TableHeader>
             <TableRow>
-              {campos.map((c) => <TableHead key={c.key}>{c.label}</TableHead>)}
-              {temAtivo && <TableHead>Situação</TableHead>}
+              {campos.map((c) => <SortHead key={c.key} sortKey={c.key} sort={sort} onSort={toggle}>{c.label}</SortHead>)}
+              {temAtivo && <SortHead sortKey="ativo" sort={sort} onSort={toggle}>Situação</SortHead>}
               <TableHead className="w-24 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -133,7 +140,7 @@ export default function CadastroSimples({
                 </TableCell>
               </TableRow>
             ) : (
-              filtrados.map((r) => (
+              sorted.map((r) => (
                 <TableRow key={r.id}>
                   {campos.map((c, i) => (
                     <TableCell key={c.key} className={i === 0 ? 'font-medium' : ''}>{rotuloOpcao(c, r[c.key])}</TableCell>

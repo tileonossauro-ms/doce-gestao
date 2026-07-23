@@ -25,6 +25,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { useSort, SortHead } from '@/components/SortHead'
 
 type Ingrediente = {
   id: string
@@ -76,6 +77,12 @@ export default function Ingredientes() {
     return t ? lista.filter((i) => i.nome.toLowerCase().includes(t)) : lista
   }, [lista, busca])
 
+  const { sorted, sort, toggle } = useSort(
+    filtrados,
+    (i, k) => (i as unknown as Record<string, unknown>)[k],
+    { key: 'nome', dir: 'asc' },
+  )
+
   async function confirmarExclusao() {
     if (!excluir) return
     const { error } = await supabase.from('ingredientes').delete().eq('id', excluir.id)
@@ -100,11 +107,11 @@ export default function Ingredientes() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Unidade</TableHead>
-              <TableHead className="text-right">Custo unitário</TableHead>
-              <TableHead className="text-right">Estoque</TableHead>
-              <TableHead>Atualizado em</TableHead>
+              <SortHead sortKey="nome" sort={sort} onSort={toggle}>Nome</SortHead>
+              <SortHead sortKey="unidade" sort={sort} onSort={toggle}>Unidade</SortHead>
+              <SortHead sortKey="custo_unitario" sort={sort} onSort={toggle} className="text-right">Custo unitário</SortHead>
+              <SortHead sortKey="estoque_atual" sort={sort} onSort={toggle} className="text-right">Estoque</SortHead>
+              <SortHead sortKey="atualizado_em" sort={sort} onSort={toggle}>Atualizado em</SortHead>
               <TableHead className="w-32 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -128,7 +135,7 @@ export default function Ingredientes() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtrados.map((i) => (
+              sorted.map((i) => (
                 <TableRow key={i.id}>
                   <TableCell className="font-medium">{i.nome}</TableCell>
                   <TableCell>{i.unidade}</TableCell>

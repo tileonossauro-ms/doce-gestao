@@ -22,6 +22,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { useSort, SortHead } from '@/components/SortHead'
 
 type Cliente = {
   id: string
@@ -70,6 +71,12 @@ export default function Clientes() {
     [lista, mesAtual],
   )
 
+  const { sorted, sort, toggle } = useSort(
+    filtrados,
+    (c, k) => (c as unknown as Record<string, unknown>)[k],
+    { key: 'nome', dir: 'asc' },
+  )
+
   async function confirmarExclusao() {
     if (!excluir) return
     const { error } = await supabase.from('clientes').delete().eq('id', excluir.id)
@@ -104,10 +111,10 @@ export default function Clientes() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead>Telefone</TableHead>
-              <TableHead>Aniversário</TableHead>
-              <TableHead>Observação</TableHead>
+              <SortHead sortKey="nome" sort={sort} onSort={toggle}>Nome</SortHead>
+              <SortHead sortKey="telefone" sort={sort} onSort={toggle}>Telefone</SortHead>
+              <SortHead sortKey="aniversario" sort={sort} onSort={toggle}>Aniversário</SortHead>
+              <SortHead sortKey="observacao" sort={sort} onSort={toggle}>Observação</SortHead>
               <TableHead className="w-24 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -131,7 +138,7 @@ export default function Clientes() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtrados.map((c) => {
+              sorted.map((c) => {
                 const aniverEsteMes = mesAniversario(c.aniversario) === mesAtual
                 return (
                   <TableRow key={c.id}>

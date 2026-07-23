@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, ArrowUpCircle, ArrowDownCircle, Wallet, Loader2, Pencil, Trash2 } from 'lucide-react'
+import { Plus, ArrowUpCircle, ArrowDownCircle, Wallet, Loader2, Pencil, Trash2, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
@@ -28,6 +28,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { useSort, SortHead } from '@/components/SortHead'
 
 type Lancamento = {
   id: string
@@ -64,6 +65,7 @@ export default function Financeiro() {
   const [aba, setAba] = useState<'lancamentos' | 'dre'>('lancamentos')
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [filtroPeriodo, setFiltroPeriodo] = useState('mes')
+  const [busca, setBusca] = useState('')
   const [criar, setCriar] = useState(false)
   const [editando, setEditando] = useState<Lancamento | null>(null)
   const [excluir, setExcluir] = useState<Lancamento | null>(null)
@@ -109,8 +111,19 @@ export default function Financeiro() {
       : filtroPeriodo === '30' ? diasAtras(30)
       : filtroPeriodo === '90' ? diasAtras(90)
       : '0000-01-01'
-    return lista.filter((l) => l.data >= limite && (filtroTipo === 'todos' || l.tipo === filtroTipo))
-  }, [lista, filtroTipo, filtroPeriodo])
+    const t = busca.trim().toLowerCase()
+    return lista.filter((l) =>
+      l.data >= limite &&
+      (filtroTipo === 'todos' || l.tipo === filtroTipo) &&
+      (!t || (l.descricao ?? '').toLowerCase().includes(t) || (l.categoria?.nome ?? '').toLowerCase().includes(t)),
+    )
+  }, [lista, filtroTipo, filtroPeriodo, busca])
+
+  const { sorted, sort, toggle } = useSort(
+    filtrados,
+    (l, k) => (k === 'categoria' ? l.categoria?.nome : (l as unknown as Record<string, unknown>)[k]),
+    { key: 'data', dir: 'desc' },
+  )
 
   return (
     <div className="space-y-4">
@@ -139,6 +152,10 @@ export default function Financeiro() {
       </div>
 
       <div className="flex flex-wrap gap-2">
+        <div className="relative min-w-52 flex-1">
+          <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-8" placeholder="Buscar por descrição ou categoria..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+        </div>
         <Select value={filtroTipo} onValueChange={setFiltroTipo}>
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
@@ -162,11 +179,11 @@ export default function Financeiro() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Data</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead>Tipo</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
+              <SortHead sortKey="data" sort={sort} onSort={toggle}>Data</SortHead>
+              <SortHead sortKey="descricao" sort={sort} onSort={toggle}>Descrição</SortHead>
+              <SortHead sortKey="categoria" sort={sort} onSort={toggle}>Categoria</SortHead>
+              <SortHead sortKey="tipo" sort={sort} onSort={toggle}>Tipo</SortHead>
+              <SortHead sortKey="valor" sort={sort} onSort={toggle} className="text-right">Valor</SortHead>
               <TableHead className="w-20 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -184,7 +201,7 @@ export default function Financeiro() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtrados.map((l) => (
+              sorted.map((l) => (
                 <TableRow key={l.id}>
                   <TableCell className="text-muted-foreground">{formatData(l.data)}</TableCell>
                   <TableCell className="font-medium">{l.descricao || '—'}</TableCell>

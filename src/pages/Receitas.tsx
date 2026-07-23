@@ -24,6 +24,7 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
+import { useSort, SortHead } from '@/components/SortHead'
 
 export default function Receitas() {
   const [receitas, setReceitas] = useState<Receita[]>([])
@@ -59,6 +60,12 @@ export default function Receitas() {
       return okBusca && okStatus
     })
   }, [receitas, busca, filtroStatus])
+
+  const { sorted, sort, toggle } = useSort(
+    filtradas,
+    (r, k) => (r as unknown as Record<string, unknown>)[k],
+    { key: 'nome', dir: 'asc' },
+  )
 
   async function confirmarExclusao() {
     if (!excluir) return
@@ -106,11 +113,11 @@ export default function Receitas() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nome</TableHead>
-              <TableHead className="text-right">Rendimento</TableHead>
-              <TableHead className="text-right">Custo direto</TableHead>
-              <TableHead className="text-right">Preço sugerido</TableHead>
-              <TableHead>Status</TableHead>
+              <SortHead sortKey="nome" sort={sort} onSort={toggle}>Nome</SortHead>
+              <SortHead sortKey="rendimento" sort={sort} onSort={toggle} className="text-right">Rendimento</SortHead>
+              <SortHead sortKey="custo_direto" sort={sort} onSort={toggle} className="text-right">Custo direto</SortHead>
+              <SortHead sortKey="preco_sugerido" sort={sort} onSort={toggle} className="text-right">Preço sugerido</SortHead>
+              <SortHead sortKey="status" sort={sort} onSort={toggle}>Status</SortHead>
               <TableHead className="w-24 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>
@@ -133,7 +140,7 @@ export default function Receitas() {
                 </TableCell>
               </TableRow>
             ) : (
-              filtradas.map((r) => (
+              sorted.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium">{r.nome}</TableCell>
                   <TableCell className="text-right">
