@@ -15,7 +15,8 @@ import Categorias from '@/pages/Categorias'
 import Relatorios from '@/pages/Relatorios'
 import CustosFixos from '@/pages/CustosFixos'
 import Agenda from '@/pages/Agenda'
-import SecaoEmBreve from '@/components/SecaoEmBreve'
+import Fornecedores from '@/pages/Fornecedores'
+import Marcas from '@/pages/Marcas'
 import { Toaster } from '@/components/ui/sonner'
 
 function App() {
@@ -36,8 +37,8 @@ function App() {
               <Route path="/categorias" element={<Categorias />} />
               <Route path="/relatorios" element={<Relatorios />} />
               <Route path="/agenda" element={<Agenda />} />
-              <Route path="/fornecedores" element={<SecaoEmBreve titulo="Fornecedores" nota="Chega na Fase 12." />} />
-              <Route path="/marcas" element={<SecaoEmBreve titulo="Marcas" nota="Chega na Fase 12." />} />
+              <Route path="/fornecedores" element={<Fornecedores />} />
+              <Route path="/marcas" element={<Marcas />} />
               <Route path="/custos-fixos" element={<CustosFixos />} />
               <Route path="/configuracoes" element={<Configuracoes />} />
               <Route index element={<Navigate to="/painel" replace />} />

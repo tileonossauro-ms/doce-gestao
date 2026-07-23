@@ -33,13 +33,18 @@ type Ingrediente = {
   custo_unitario: number | null
   estoque_atual: number
   estoque_minimo: number
+  marca_id: string | null
+  fornecedor_id: string | null
   atualizado_em: string
 }
+export type Opcao = { id: string; nome: string }
 
 const UNIDADES = ['g', 'ml', 'un', 'kg', 'L']
 
 export default function Ingredientes() {
   const [lista, setLista] = useState<Ingrediente[]>([])
+  const [marcas, setMarcas] = useState<Opcao[]>([])
+  const [fornecedores, setFornecedores] = useState<Opcao[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
   const [criar, setCriar] = useState(false)
@@ -48,11 +53,17 @@ export default function Ingredientes() {
   const [movimentar, setMovimentar] = useState<Ingrediente | null>(null)
 
   const carregar = useCallback(async () => {
-    const { data, error } = await supabase.from('ingredientes').select('*').order('nome')
-    if (error) toast.error('Erro ao carregar: ' + error.message)
-    setLista(((data as Ingrediente[]) ?? []).map((i) => ({
+    const [g, m, f] = await Promise.all([
+      supabase.from('ingredientes').select('*').order('nome'),
+      supabase.from('marcas').select('id, nome').eq('ativo', true).order('nome'),
+      supabase.from('fornecedores').select('id, nome').eq('ativo', true).order('nome'),
+    ])
+    if (g.error) toast.error('Erro ao carregar: ' + g.error.message)
+    setLista(((g.data as Ingrediente[]) ?? []).map((i) => ({
       ...i, estoque_atual: Number(i.estoque_atual), estoque_minimo: Number(i.estoque_minimo),
     })))
+    setMarcas((m.data as Opcao[]) ?? [])
+    setFornecedores((f.data as Opcao[]) ?? [])
     setLoading(false)
   }, [])
 
@@ -146,7 +157,7 @@ export default function Ingredientes() {
             <DialogTitle>Novo ingrediente</DialogTitle>
             <DialogDescription>Cadastre um ingrediente com seu custo por unidade de medida.</DialogDescription>
           </DialogHeader>
-          <IngredienteForm onSaved={carregar} onClose={() => setCriar(false)} />
+          <IngredienteForm marcas={marcas} fornecedores={fornecedores} onSaved={carregar} onClose={() => setCriar(false)} />
         </DialogContent>
       </Dialog>
 
@@ -157,12 +168,12 @@ export default function Ingredientes() {
             <SheetDescription>Ao mudar o custo, a data de atualização é registrada.</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-6">
-            {editando && <IngredienteForm ingrediente={editando} onSaved={carregar} onClose={() => setEditando(null)} />}
+            {editando && <IngredienteForm ingrediente={editando} marcas={marcas} fornecedores={fornecedores} onSaved={carregar} onClose={() => setEditando(null)} />}
           </div>
         </SheetContent>
       </Sheet>
 
-      <MovimentacaoDialog ingrediente={movimentar} onClose={() => setMovimentar(null)} onDone={carregar} />
+      <MovimentacaoDialog ingrediente={movimentar} marcas={marcas} fornecedores={fornecedores} onClose={() => setMovimentar(null)} onDone={carregar} />
 
       <AlertDialog open={!!excluir} onOpenChange={(o) => !o && setExcluir(null)}>
         <AlertDialogContent>
@@ -191,9 +202,11 @@ function BadgeEstoque({ i }: { i: Ingrediente }) {
 }
 
 function IngredienteForm({
-  ingrediente, onSaved, onClose,
+  ingrediente, marcas, fornecedores, onSaved, onClose,
 }: {
   ingrediente?: Ingrediente
+  marcas: Opcao[]
+  fornecedores: Opcao[]
   onSaved: () => void
   onClose: () => void
 }) {
@@ -202,6 +215,8 @@ function IngredienteForm({
   const [unidade, setUnidade] = useState(ingrediente?.unidade ?? 'un')
   const [custo, setCusto] = useState(ingrediente?.custo_unitario?.toString() ?? '')
   const [minimo, setMinimo] = useState(ingrediente?.estoque_minimo?.toString() ?? '')
+  const [marcaId, setMarcaId] = useState(ingrediente?.marca_id ?? 'nenhuma')
+  const [fornecedorId, setFornecedorId] = useState(ingrediente?.fornecedor_id ?? 'nenhum')
   const [salvando, setSalvando] = useState(false)
 
   async function salvar() {
@@ -215,6 +230,8 @@ function IngredienteForm({
       unidade,
       custo_unitario: Number.isFinite(c) ? c : null,
       estoque_minimo: Number.isFinite(m) ? m : 0,
+      marca_id: marcaId === 'nenhuma' ? null : marcaId,
+      fornecedor_id: fornecedorId === 'nenhum' ? null : fornecedorId,
     }
     let error
     if (ingrediente) {
@@ -253,6 +270,29 @@ function IngredienteForm({
         <Input id="ing-min" inputMode="decimal" value={minimo} onChange={(e) => setMinimo(e.target.value)} placeholder="0 = sem aviso" />
         <p className="text-xs text-muted-foreground">Abaixo desse valor, o estoque aparece em amarelo. O estoque em si você ajusta pelo botão de caixa (📦) na lista.</p>
       </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <Label htmlFor="ing-marca">Marca preferida</Label>
+          <Select value={marcaId} onValueChange={setMarcaId}>
+            <SelectTrigger id="ing-marca"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nenhuma">Nenhuma</SelectItem>
+              {marcas.map((m) => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="ing-forn">Fornecedor preferido</Label>
+          <Select value={fornecedorId} onValueChange={setFornecedorId}>
+            <SelectTrigger id="ing-forn"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nenhum">Nenhum</SelectItem>
+              {fornecedores.map((f) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground">Marca e fornecedor apenas já vêm preenchidos ao lançar uma compra — você pode trocar na hora.</p>
       <div className="flex justify-end gap-2 pt-2">
         <Button variant="outline" onClick={onClose}>Cancelar</Button>
         <Button onClick={salvar} disabled={salvando}>
@@ -264,26 +304,72 @@ function IngredienteForm({
   )
 }
 
-/** Lançar compra (entrada) ou ajuste manual de estoque. */
-function MovimentacaoDialog({ ingrediente, onClose, onDone }: { ingrediente: Ingrediente | null; onClose: () => void; onDone: () => void }) {
+/** Preço médio por marca de um ingrediente, das compras já lançadas.
+ *  "Rende mais" no sentido mensurável = mais barato por unidade. */
+type PrecoMarca = { marca: string; precoUnit: number; compras: number }
+
+/** Lançar compra (entrada) ou ajuste manual de estoque. Na compra, captura marca/fornecedor/preço. */
+function MovimentacaoDialog({ ingrediente, marcas, fornecedores, onClose, onDone }: {
+  ingrediente: Ingrediente | null
+  marcas: Opcao[]
+  fornecedores: Opcao[]
+  onClose: () => void
+  onDone: () => void
+}) {
   const { user } = useAuth()
   const [tipo, setTipo] = useState<'entrada' | 'ajuste'>('entrada')
   const [quantidade, setQuantidade] = useState('')
+  const [preco, setPreco] = useState('')
+  const [marcaId, setMarcaId] = useState('nenhuma')
+  const [fornecedorId, setFornecedorId] = useState('nenhum')
   const [observacao, setObservacao] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [comparativo, setComparativo] = useState<PrecoMarca[]>([])
 
+  // Ao abrir: reseta o form e já sugere a marca/fornecedor preferidos do ingrediente.
   useEffect(() => {
-    if (ingrediente) { setTipo('entrada'); setQuantidade(''); setObservacao('') }
-  }, [ingrediente])
+    if (!ingrediente) return
+    setTipo('entrada'); setQuantidade(''); setPreco(''); setObservacao('')
+    setMarcaId(ingrediente.marca_id ?? 'nenhuma')
+    setFornecedorId(ingrediente.fornecedor_id ?? 'nenhum')
+
+    // Carrega o comparativo de preço por marca das compras anteriores.
+    supabase
+      .from('movimentacoes_estoque')
+      .select('quantidade, preco_total, marca_id')
+      .eq('ingrediente_id', ingrediente.id).eq('tipo', 'entrada')
+      .not('preco_total', 'is', null)
+      .then(({ data }) => {
+        const acc = new Map<string, { total: number; qtd: number; n: number }>()
+        for (const r of (data as { quantidade: number; preco_total: number; marca_id: string | null }[]) ?? []) {
+          const q = Number(r.quantidade)
+          if (!q) continue
+          const chave = r.marca_id ?? 'sem'
+          const a = acc.get(chave) ?? { total: 0, qtd: 0, n: 0 }
+          a.total += Number(r.preco_total); a.qtd += q; a.n++
+          acc.set(chave, a)
+        }
+        const nomeMarca = (id: string) => id === 'sem' ? 'Sem marca' : (marcas.find((m) => m.id === id)?.nome ?? 'Marca removida')
+        setComparativo([...acc.entries()]
+          .map(([id, a]) => ({ marca: nomeMarca(id), precoUnit: a.total / a.qtd, compras: a.n }))
+          .sort((x, y) => x.precoUnit - y.precoUnit))
+      })
+  }, [ingrediente, marcas])
 
   async function salvar() {
     if (!user || !ingrediente) return
     const q = parseNum(quantidade)
     if (!Number.isFinite(q) || q === 0) return toast.error('Informe uma quantidade (use negativo no ajuste para reduzir).')
     if (tipo === 'entrada' && q < 0) return toast.error('Compra não pode ser negativa. Para reduzir, escolha Ajuste.')
+    const p = parseNum(preco)
     setSalvando(true)
     const { error } = await supabase.from('movimentacoes_estoque').insert({
-      user_id: user.id, ingrediente_id: ingrediente.id, tipo, quantidade: q, observacao: observacao.trim() || null,
+      user_id: user.id, ingrediente_id: ingrediente.id, tipo, quantidade: q,
+      observacao: observacao.trim() || null,
+      // marca/fornecedor/preço só fazem sentido numa compra.
+      marca_id: tipo === 'entrada' && marcaId !== 'nenhuma' ? marcaId : null,
+      fornecedor_id: tipo === 'entrada' && fornecedorId !== 'nenhum' ? fornecedorId : null,
+      preco_total: tipo === 'entrada' && Number.isFinite(p) && p > 0 ? p : null,
     })
     setSalvando(false)
     if (error) return toast.error('Erro: ' + error.message)
@@ -292,9 +378,13 @@ function MovimentacaoDialog({ ingrediente, onClose, onDone }: { ingrediente: Ing
     onClose()
   }
 
+  const q = parseNum(quantidade)
+  const p = parseNum(preco)
+  const precoUnitAgora = tipo === 'entrada' && Number.isFinite(q) && q > 0 && Number.isFinite(p) && p > 0 ? p / q : null
+
   return (
     <Dialog open={!!ingrediente} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Movimentar estoque</DialogTitle>
           <DialogDescription>{ingrediente?.nome} — atual: {ingrediente ? `${formatNum(ingrediente.estoque_atual)} ${ingrediente.unidade}` : ''}</DialogDescription>
@@ -310,15 +400,72 @@ function MovimentacaoDialog({ ingrediente, onClose, onDone }: { ingrediente: Ing
               </SelectContent>
             </Select>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="mov-qtd">Quantidade ({ingrediente?.unidade})</Label>
-            <Input id="mov-qtd" inputMode="decimal" value={quantidade} onChange={(e) => setQuantidade(e.target.value)}
-              placeholder={tipo === 'ajuste' ? 'Ex.: -2 para reduzir' : 'Ex.: 10'} />
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="mov-qtd">Quantidade ({ingrediente?.unidade})</Label>
+              <Input id="mov-qtd" inputMode="decimal" value={quantidade} onChange={(e) => setQuantidade(e.target.value)}
+                placeholder={tipo === 'ajuste' ? 'Ex.: -2' : 'Ex.: 10'} />
+            </div>
+            {tipo === 'entrada' && (
+              <div className="space-y-2">
+                <Label htmlFor="mov-preco">Preço total pago (R$)</Label>
+                <Input id="mov-preco" inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} placeholder="Opcional" />
+              </div>
+            )}
           </div>
+
+          {tipo === 'entrada' && (
+            <>
+              {precoUnitAgora != null && (
+                <p className="text-xs text-muted-foreground">
+                  Dá <strong className="text-foreground">{formatBRL(precoUnitAgora)}</strong> por {ingrediente?.unidade}.
+                </p>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <Label htmlFor="mov-marca">Marca</Label>
+                  <Select value={marcaId} onValueChange={setMarcaId}>
+                    <SelectTrigger id="mov-marca"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhuma">Sem marca</SelectItem>
+                      {marcas.map((m) => <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="mov-forn">Fornecedor</Label>
+                  <Select value={fornecedorId} onValueChange={setFornecedorId}>
+                    <SelectTrigger id="mov-forn"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="nenhum">Sem fornecedor</SelectItem>
+                      {fornecedores.map((f) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </>
+          )}
+
           <div className="space-y-2">
             <Label htmlFor="mov-obs">Observação</Label>
-            <Input id="mov-obs" value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Ex.: compra no atacado" />
+            <Input id="mov-obs" value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Ex.: promoção no atacado" />
           </div>
+
+          {tipo === 'entrada' && comparativo.length > 0 && (
+            <div className="rounded-md border bg-muted/30 p-3">
+              <p className="mb-1 text-xs font-medium">Preço médio por marca (compras anteriores)</p>
+              <ul className="space-y-1 text-sm">
+                {comparativo.map((c, i) => (
+                  <li key={c.marca} className="flex items-baseline justify-between gap-2">
+                    <span className={i === 0 ? 'font-medium' : 'text-muted-foreground'}>
+                      {c.marca}{i === 0 && comparativo.length > 1 ? ' · mais barata' : ''}
+                    </span>
+                    <span className="tabular-nums">{formatBRL(c.precoUnit)}/{ingrediente?.unidade} <span className="text-xs text-muted-foreground">({c.compras}x)</span></span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
