@@ -13,6 +13,7 @@ import {
   CreditCard,
   Tags,
   Receipt,
+  Wand2,
   Settings,
   CakeSlice,
   LogOut,
@@ -52,6 +53,7 @@ const OPERACAO = [
   { titulo: 'Pedidos', url: '/pedidos', icone: ClipboardList },
   { titulo: 'Financeiro', url: '/financeiro', icone: Wallet },
   { titulo: 'Relatórios', url: '/relatorios', icone: BarChart3 },
+  { titulo: 'Precificação', url: '/precificacao', icone: Wand2, pro: true },
   { titulo: 'Agenda', url: '/agenda', icone: Calendar },
 ]
 
@@ -73,6 +75,7 @@ export default function AppLayout() {
   const nome = nomeExibicao(user, perfil)
   const isPro = perfil?.plano === 'pro'
   // No plano Básico os itens marcados como Pró somem do menu (não vendem, só não aparecem).
+  const operacao = OPERACAO.filter((item) => isPro || !item.pro)
   const cadastros = CADASTROS.filter((item) => isPro || !item.pro)
 
   async function sair() {
@@ -118,7 +121,7 @@ export default function AppLayout() {
               <SidebarGroupLabel>Operação</SidebarGroupLabel>
               <SidebarGroupContent>
                 <SidebarMenu>
-                  {OPERACAO.map((item) => (
+                  {operacao.map((item) => (
                     <SidebarMenuItem key={item.url}>
                       <SidebarMenuButton asChild tooltip={item.titulo} isActive={pathname === item.url}>
                         <NavLink to={item.url}>

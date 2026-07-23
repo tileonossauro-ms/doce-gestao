@@ -17,6 +17,7 @@ import CustosFixos from '@/pages/CustosFixos'
 import Agenda from '@/pages/Agenda'
 import Fornecedores from '@/pages/Fornecedores'
 import Marcas from '@/pages/Marcas'
+import Precificacao from '@/pages/Precificacao'
 import { RotaPro, RotaAdmin } from '@/components/Pro'
 import Admin from '@/pages/Admin'
 import { Toaster } from '@/components/ui/sonner'
@@ -38,6 +39,7 @@ function App() {
               <Route path="/formas-pagamento" element={<FormasPagamento />} />
               <Route path="/categorias" element={<Categorias />} />
               <Route path="/relatorios" element={<Relatorios />} />
+              <Route path="/precificacao" element={<RotaPro recurso="Precificação em massa"><Precificacao /></RotaPro>} />
               <Route path="/agenda" element={<Agenda />} />
               <Route path="/fornecedores" element={<RotaPro recurso="Fornecedores"><Fornecedores /></RotaPro>} />
               <Route path="/marcas" element={<RotaPro recurso="Marcas"><Marcas /></RotaPro>} />
