@@ -8,15 +8,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 
-type ItemVenda = { quantidade: number; preco_unitario: number; custo_unitario_snapshot: number | null }
-type Venda = { id: string; pedido: { itens: ItemVenda[] } | null }
-type Saida = {
-  id: string
-  valor: number
-  descricao: string | null
-  categoria: { nome: string; tipo: string; conta_no_dre: boolean } | null
-}
-type CustoFixo = { id: string; nome: string; valor_mensal: number; inicio: string; fim: string | null }
+type ItemVenda = { quantidade: number; custo_unitario_snapshot: number | null }
+type Entrada = { valor: number; pedido_id: string | null; pedido: { itens: ItemVenda[] } | null }
+type Categoria = { nome: string; grupo_dre: string | null; conta_no_dre: boolean }
+type Saida = { valor: number; categoria: Categoria | null }
+type CustoFixo = { valor_mensal: number; inicio: string; fim: string | null; categoria: { nome: string } | null }
 
 const mesAtual = () => new Date().toISOString().slice(0, 7)
 
@@ -27,9 +23,16 @@ function limitesDoMes(ym: string): { de: string; ate: string } {
   return { de: `${ym}-01`, ate: `${ym}-${String(ultimo).padStart(2, '0')}` }
 }
 
+/** Soma valores agrupando por nome, ordenado do maior para o menor. */
+function agrupar(itens: { nome: string; valor: number }[]) {
+  const m = new Map<string, number>()
+  for (const i of itens) m.set(i.nome, (m.get(i.nome) ?? 0) + i.valor)
+  return [...m.entries()].map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor)
+}
+
 export default function Dre() {
   const [mes, setMes] = useState(mesAtual())
-  const [vendas, setVendas] = useState<Venda[]>([])
+  const [entradas, setEntradas] = useState<Entrada[]>([])
   const [saidas, setSaidas] = useState<Saida[]>([])
   const [fixos, setFixos] = useState<CustoFixo[]>([])
   const [loading, setLoading] = useState(true)
@@ -38,23 +41,21 @@ export default function Dre() {
 
   const carregar = useCallback(async () => {
     setLoading(true)
-    const [v, s, f] = await Promise.all([
+    const [e, s, f] = await Promise.all([
       supabase
         .from('lancamentos')
-        .select('id, pedido:pedidos(itens:pedido_itens(quantidade, preco_unitario, custo_unitario_snapshot))')
-        .eq('tipo', 'entrada').not('pedido_id', 'is', null)
-        .gte('data', de).lte('data', ate),
+        .select('valor, pedido_id, pedido:pedidos(itens:pedido_itens(quantidade, custo_unitario_snapshot))')
+        .eq('tipo', 'entrada').gte('data', de).lte('data', ate),
       supabase
         .from('lancamentos')
-        .select('id, valor, descricao, categoria:categorias_financeiras(nome, tipo, conta_no_dre)')
-        .eq('tipo', 'saida')
-        .gte('data', de).lte('data', ate),
-      supabase.from('custos_fixos').select('id, nome, valor_mensal, inicio, fim'),
+        .select('valor, categoria:categorias_financeiras(nome, grupo_dre, conta_no_dre)')
+        .eq('tipo', 'saida').gte('data', de).lte('data', ate),
+      supabase.from('custos_fixos').select('valor_mensal, inicio, fim, categoria:categorias_financeiras(nome)'),
     ])
-    if (v.error || s.error || f.error) toast.error('Erro ao montar o DRE: ' + (v.error ?? s.error ?? f.error)?.message)
-    setVendas((v.data as unknown as Venda[]) ?? [])
+    if (e.error || s.error || f.error) toast.error('Erro ao montar o DRE: ' + (e.error ?? s.error ?? f.error)?.message)
+    setEntradas(((e.data as unknown as Entrada[]) ?? []).map((x) => ({ ...x, valor: Number(x.valor) })))
     setSaidas(((s.data as unknown as Saida[]) ?? []).map((x) => ({ ...x, valor: Number(x.valor) })))
-    setFixos(((f.data as CustoFixo[]) ?? []).map((x) => ({ ...x, valor_mensal: Number(x.valor_mensal) })))
+    setFixos(((f.data as unknown as CustoFixo[]) ?? []).map((x) => ({ ...x, valor_mensal: Number(x.valor_mensal) })))
     setLoading(false)
   }, [de, ate])
 
@@ -63,47 +64,60 @@ export default function Dre() {
   }, [carregar])
 
   const dre = useMemo(() => {
-    let receita = 0
-    let ingredientes = 0
-    let semCusto = 0
-    for (const v of vendas) {
-      for (const i of v.pedido?.itens ?? []) {
-        receita += i.quantidade * Number(i.preco_unitario)
-        if (!Number(i.custo_unitario_snapshot)) semCusto++
-        else ingredientes += i.quantidade * Number(i.custo_unitario_snapshot)
+    // 1) Receita
+    let recEncomendas = 0, recAvulsas = 0, custoIngredientes = 0, semCusto = 0
+    for (const e of entradas) {
+      if (e.pedido_id) {
+        recEncomendas += e.valor
+        for (const i of e.pedido?.itens ?? []) {
+          if (!Number(i.custo_unitario_snapshot)) semCusto++
+          else custoIngredientes += i.quantidade * Number(i.custo_unitario_snapshot)
+        }
+      } else {
+        recAvulsas += e.valor
       }
     }
+    const receitaBruta = recEncomendas + recAvulsas
 
-    // Saídas de categoria fixa não entram: o custo fixo já vem do cadastro (senão contaria 2x).
-    // Saídas sem categoria entram como variáveis, para nenhum gasto sumir do DRE.
-    const variaveisPorCategoria = new Map<string, number>()
-    let jaNosFixos = 0
-    let ignoradas = 0
+    // 2) Saídas por grupo do DRE
+    const deducoesItens: { nome: string; valor: number }[] = []
+    const variaveisItens: { nome: string; valor: number }[] = []
+    let saidasFixasIgnoradas = 0        // fixo lançado como saída: já vem do cadastro
+    let comprasIngredienteIgnoradas = 0 // já entra pelo custo da receita
+    let investimentos = 0
     for (const s of saidas) {
-      const cat = s.categoria
-      if (cat && cat.conta_no_dre === false) { ignoradas += s.valor; continue }
-      if (cat?.tipo === 'fixo') { jaNosFixos += s.valor; continue }
-      const nome = cat?.nome ?? 'Sem categoria'
-      variaveisPorCategoria.set(nome, (variaveisPorCategoria.get(nome) ?? 0) + s.valor)
+      const g = s.categoria?.grupo_dre ?? null
+      const nome = s.categoria?.nome ?? 'Sem categoria'
+      if (s.categoria?.conta_no_dre === false) { comprasIngredienteIgnoradas += s.valor; continue }
+      if (g === 'deducao') deducoesItens.push({ nome, valor: s.valor })
+      else if (g === 'custo_fixo') saidasFixasIgnoradas += s.valor
+      else if (g === 'investimento') investimentos += s.valor
+      else variaveisItens.push({ nome, valor: s.valor }) // custo_variavel, sem categoria ou grupo nulo
     }
-    const outrosVariaveis = [...variaveisPorCategoria.values()].reduce((a, b) => a + b, 0)
+    const deducoes = deducoesItens.reduce((a, b) => a + b.valor, 0)
+    const variaveisManuais = variaveisItens.reduce((a, b) => a + b.valor, 0)
 
+    // 3) Custos fixos vigentes (do cadastro), agrupados por categoria
     const vigentes = fixos.filter((c) => c.inicio <= ate && (!c.fim || c.fim >= de))
+    const fixosItens = agrupar(vigentes.map((c) => ({ nome: c.categoria?.nome ?? 'Sem categoria', valor: c.valor_mensal })))
     const totalFixos = vigentes.reduce((s, c) => s + c.valor_mensal, 0)
 
-    const variaveis = ingredientes + outrosVariaveis
-    const margemContribuicao = receita - variaveis
-    const lucro = margemContribuicao - totalFixos
+    const receitaLiquida = receitaBruta - deducoes
+    const custosVariaveis = custoIngredientes + variaveisManuais
+    const custosTotais = custosVariaveis + totalFixos
+    const lucroOperacional = receitaLiquida - custosTotais
+    const lucroLiquido = lucroOperacional - investimentos
+
     return {
-      receita, ingredientes, outrosVariaveis, variaveis, margemContribuicao,
-      totalFixos, lucro,
-      margemPct: receita > 0 ? (lucro / receita) * 100 : 0,
-      contribuicaoPct: receita > 0 ? (margemContribuicao / receita) * 100 : 0,
-      porCategoria: [...variaveisPorCategoria.entries()].sort((a, b) => b[1] - a[1]),
-      vigentes: vigentes.sort((a, b) => b.valor_mensal - a.valor_mensal),
-      semCusto, jaNosFixos, ignoradas,
+      recEncomendas, recAvulsas, receitaBruta,
+      deducoesItens: agrupar(deducoesItens), deducoes, receitaLiquida,
+      custoIngredientes, variaveisItens: agrupar(variaveisItens), custosVariaveis,
+      fixosItens, totalFixos, custosTotais,
+      lucroOperacional, investimentos, lucroLiquido,
+      pct: receitaBruta > 0 ? (lucroLiquido / receitaBruta) * 100 : 0,
+      semCusto, saidasFixasIgnoradas, comprasIngredienteIgnoradas,
     }
-  }, [vendas, saidas, fixos, de, ate])
+  }, [entradas, saidas, fixos, de, ate])
 
   return (
     <div className="space-y-4">
@@ -113,95 +127,79 @@ export default function Dre() {
           <Input id="dre-mes" type="month" value={mes} onChange={(e) => setMes(e.target.value)} className="w-44" />
         </div>
         <p className="max-w-xl text-sm text-muted-foreground">
-          O DRE mostra o caminho do dinheiro: do que entrou até o que realmente sobrou no bolso, depois de pagar ingredientes e as contas do mês.
+          Do que entrou até o que sobrou no bolso: receita, menos o que o cartão/app/imposto abate, menos ingredientes e contas do mês.
         </p>
       </div>
 
       {loading ? (
-        <Skeleton className="h-96" />
+        <Skeleton className="h-[32rem]" />
       ) : (
-        <div className="grid gap-4 lg:grid-cols-3">
-          <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="text-base">Resultado do mês</CardTitle>
-              <CardDescription>Só pedidos pagos entram como receita, na data em que o dinheiro entrou.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              <LinhaDre titulo="Receita bruta (vendas pagas)" valor={dre.receita} destaque />
-              <LinhaDre titulo="(−) Ingredientes das vendas" valor={-dre.ingredientes} recuo />
-              <LinhaDre titulo="(−) Outros custos variáveis" valor={-dre.outrosVariaveis} recuo />
-              <Separadora />
-              <LinhaDre
-                titulo="(=) Margem de contribuição"
-                valor={dre.margemContribuicao}
-                nota={dre.receita > 0 ? `${formatNum(dre.contribuicaoPct, 1)}% da receita` : undefined}
-                destaque
-              />
-              <LinhaDre titulo="(−) Custos fixos do mês" valor={-dre.totalFixos} recuo />
-              <Separadora />
-              <LinhaDre
-                titulo="(=) Lucro líquido"
-                valor={dre.lucro}
-                nota={dre.receita > 0 ? `margem líquida de ${formatNum(dre.margemPct, 1)}%` : undefined}
-                destaque
-                colorir
-              />
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Resultado de {mes.split('-').reverse().join('/')}</CardTitle>
+            <CardDescription>Baseado no que entrou e saiu no mês. Custos fixos vêm do cadastro em Cadastros › Custos fixos.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {/* 1. RECEITA */}
+            <Secao titulo="1. Receita" />
+            <Item nome="Vendas por encomenda (pedidos pagos)" valor={dre.recEncomendas} recuo />
+            <Item nome="Vendas de balcão / avulsas" valor={dre.recAvulsas} recuo />
+            <Total titulo="(=) Receita bruta" valor={dre.receitaBruta} />
 
-              {dre.receita === 0 && (
-                <p className="pt-3 text-sm text-muted-foreground">Nenhuma venda paga neste mês.</p>
-              )}
-              {dre.semCusto > 0 && (
-                <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
-                  {dre.semCusto} item(ns) vendido(s) sem custo de receita registrado — entram como custo zero e deixam o lucro
-                  parecer maior do que é.
-                </p>
-              )}
-            </CardContent>
-          </Card>
+            {/* 2. DEDUÇÕES */}
+            <Secao titulo="2. Deduções da receita" />
+            {dre.deducoesItens.length === 0
+              ? <p className="py-1 pl-4 text-sm text-muted-foreground">Nenhuma dedução lançada no mês.</p>
+              : dre.deducoesItens.map((d) => <Item key={d.nome} nome={d.nome} valor={-d.valor} recuo />)}
+            <Total titulo="(=) Receita líquida" valor={dre.receitaLiquida} />
 
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Custos variáveis</CardTitle>
-                <CardDescription>Só existem quando há venda.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm">
-                <ItemLista nome="Ingredientes (pelas receitas vendidas)" valor={dre.ingredientes} />
-                {dre.porCategoria.map(([nome, valor]) => <ItemLista key={nome} nome={nome} valor={valor} />)}
-                {dre.variaveis === 0 && <p className="text-muted-foreground">Nenhum custo variável no mês.</p>}
-              </CardContent>
-            </Card>
+            {/* 3. CUSTOS VARIÁVEIS */}
+            <Secao titulo="3. Custos variáveis (produção)" />
+            <Item nome="Ingredientes das receitas vendidas" valor={-dre.custoIngredientes} recuo />
+            {dre.variaveisItens.map((v) => <Item key={v.nome} nome={v.nome} valor={-v.valor} recuo />)}
+            <Total titulo="(=) Subtotal de custos variáveis" valor={-dre.custosVariaveis} sub />
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-base">Custos fixos vigentes</CardTitle>
-                <CardDescription>Vêm do cadastro em Cadastros › Custos fixos.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-1 text-sm">
-                {dre.vigentes.map((c) => <ItemLista key={c.id} nome={c.nome} valor={c.valor_mensal} />)}
-                {dre.vigentes.length === 0 && (
-                  <p className="text-muted-foreground">Nenhum custo fixo vigente neste mês. Cadastre aluguel, energia e afins para o lucro líquido ficar real.</p>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+            {/* 4. CUSTOS FIXOS */}
+            <Secao titulo="4. Custos fixos (estrutura)" />
+            {dre.fixosItens.length === 0
+              ? <p className="py-1 pl-4 text-sm text-muted-foreground">Nenhum custo fixo vigente. Cadastre em Cadastros › Custos fixos.</p>
+              : dre.fixosItens.map((c) => <Item key={c.nome} nome={c.nome} valor={-c.valor} recuo />)}
+            <Total titulo="(=) Subtotal de custos fixos" valor={-dre.totalFixos} sub />
+
+            {/* 5. RESULTADO */}
+            <Secao titulo="5. Resultado" />
+            <Item nome="Custos totais (variáveis + fixos)" valor={-dre.custosTotais} recuo />
+            <Total titulo="(=) Lucro operacional" valor={dre.lucroOperacional} />
+            {dre.investimentos > 0 && <Item nome="(−) Investimentos em equipamentos" valor={-dre.investimentos} recuo />}
+            <Total titulo="(=) Lucro líquido do mês" valor={dre.lucroLiquido}
+              nota={dre.receitaBruta > 0 ? `margem líquida de ${formatNum(dre.pct, 1)}%` : undefined} colorir />
+
+            {dre.receitaBruta === 0 && <p className="pt-3 text-sm text-muted-foreground">Nenhuma receita neste mês.</p>}
+
+            {dre.semCusto > 0 && (
+              <p className="mt-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                {dre.semCusto} item(ns) vendido(s) sem custo de receita registrado — entram como custo zero e deixam o lucro
+                parecer maior do que é.
+              </p>
+            )}
+          </CardContent>
+        </Card>
       )}
 
-      {!loading && (dre.jaNosFixos > 0 || dre.ignoradas > 0) && (
+      {!loading && (dre.saidasFixasIgnoradas > 0 || dre.comprasIngredienteIgnoradas > 0) && (
         <div className="flex gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
           <Info className="mt-0.5 size-4 shrink-0" />
           <div className="space-y-1">
-            {dre.jaNosFixos > 0 && (
+            {dre.saidasFixasIgnoradas > 0 && (
               <p>
-                {formatBRL(dre.jaNosFixos)} em saídas de categoria fixa ficaram de fora: esse valor já está contado no cadastro
-                de custos fixos, e somar os dois cobraria a mesma conta duas vezes.
+                {formatBRL(dre.saidasFixasIgnoradas)} em saídas de categoria fixa ficaram de fora: os custos fixos vêm do
+                cadastro, e somar os dois cobraria a mesma conta duas vezes.
               </p>
             )}
-            {dre.ignoradas > 0 && (
+            {dre.comprasIngredienteIgnoradas > 0 && (
               <p>
-                {formatBRL(dre.ignoradas)} em compras de ingredientes ficaram de fora: o ingrediente já é cobrado pelo custo da
-                receita a cada venda. Comprar estoque não é gasto do mês, é troca de dinheiro por ingrediente.
+                {formatBRL(dre.comprasIngredienteIgnoradas)} em compras de ingredientes ficaram de fora: o ingrediente já é
+                cobrado pelo custo da receita a cada venda.
               </p>
             )}
           </div>
@@ -211,30 +209,30 @@ export default function Dre() {
   )
 }
 
-function LinhaDre({ titulo, valor, nota, destaque, recuo, colorir }: {
-  titulo: string; valor: number; nota?: string; destaque?: boolean; recuo?: boolean; colorir?: boolean
-}) {
-  const cor = colorir ? (valor >= 0 ? 'text-green-700' : 'text-red-600') : valor < 0 ? 'text-red-600' : ''
+function Secao({ titulo }: { titulo: string }) {
+  return <p className="mt-3 border-b pb-1 text-sm font-semibold text-muted-foreground first:mt-0">{titulo}</p>
+}
+
+function Item({ nome, valor, recuo }: { nome: string; valor: number; recuo?: boolean }) {
   return (
-    <div className={`flex items-baseline justify-between gap-3 py-1 ${recuo ? 'pl-4' : ''}`}>
-      <span className={destaque ? 'font-medium' : 'text-muted-foreground'}>
-        {titulo}
-        {nota && <span className="ml-2 text-xs text-muted-foreground">({nota})</span>}
-      </span>
-      <span className={`tabular-nums ${destaque ? 'text-lg font-bold' : ''} ${cor}`}>{formatBRL(valor)}</span>
+    <div className={`flex items-baseline justify-between gap-3 py-0.5 text-sm ${recuo ? 'pl-4' : ''}`}>
+      <span className="text-muted-foreground">{nome}</span>
+      <span className={`tabular-nums ${valor < 0 ? 'text-red-600' : ''}`}>{formatBRL(valor)}</span>
     </div>
   )
 }
 
-function Separadora() {
-  return <div className="my-1 border-t" />
-}
-
-function ItemLista({ nome, valor }: { nome: string; valor: number }) {
+function Total({ titulo, valor, nota, sub, colorir }: {
+  titulo: string; valor: number; nota?: string; sub?: boolean; colorir?: boolean
+}) {
+  const cor = colorir ? (valor >= 0 ? 'text-green-700' : 'text-red-600') : valor < 0 ? 'text-red-600' : ''
   return (
-    <div className="flex items-baseline justify-between gap-3">
-      <span className="text-muted-foreground">{nome}</span>
-      <span className="tabular-nums">{formatBRL(valor)}</span>
+    <div className={`flex items-baseline justify-between gap-3 py-1 ${sub ? '' : 'border-t'}`}>
+      <span className="font-medium">
+        {titulo}
+        {nota && <span className="ml-2 text-xs text-muted-foreground">({nota})</span>}
+      </span>
+      <span className={`tabular-nums font-bold ${sub ? '' : 'text-lg'} ${cor}`}>{formatBRL(valor)}</span>
     </div>
   )
 }
