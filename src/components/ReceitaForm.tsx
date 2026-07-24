@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { usePlano } from '@/components/Pro'
 import Ajuda from '@/components/Ajuda'
+import DicaTermo from '@/components/DicaTermo'
 import { formatBRL, parseNum } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -277,23 +278,43 @@ export default function ReceitaForm({
         </div>
         <div className={`grid grid-cols-2 gap-3 ${isPro ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
           <div className="space-y-1">
-            <Label htmlFor="pct-ind" className="text-xs">Custo indireto %</Label>
+            <Label htmlFor="pct-ind" className="flex items-center gap-1 text-xs">
+              Custo indireto %
+              <DicaTermo titulo="Custo indireto" faixa="Costuma ficar entre 5% e 15%.">
+                Gastos da produção que não estão nos ingredientes: gás, luz, água.
+              </DicaTermo>
+            </Label>
             <Input id="pct-ind" inputMode="decimal" value={pct.indireto}
               onChange={(e) => setPct({ ...pct, indireto: e.target.value })} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="pct-mar" className="text-xs">Margem %</Label>
+            <Label htmlFor="pct-mar" className="flex items-center gap-1 text-xs">
+              Margem %
+              <DicaTermo titulo="Margem" faixa="Costuma ficar entre 30% e 60%.">
+                É o seu lucro em cada venda — o que sobra pra você depois de tudo.
+              </DicaTermo>
+            </Label>
             <Input id="pct-mar" inputMode="decimal" value={pct.margem}
               onChange={(e) => setPct({ ...pct, margem: e.target.value })} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="pct-tax" className="text-xs">Taxas %</Label>
+            <Label htmlFor="pct-tax" className="flex items-center gap-1 text-xs">
+              Taxas %
+              <DicaTermo titulo="Taxas" faixa="Costuma ficar entre 2% e 6%.">
+                O que a maquininha de cartão ou o app de entrega cobram de cada venda.
+              </DicaTermo>
+            </Label>
             <Input id="pct-tax" inputMode="decimal" value={pct.taxas}
               onChange={(e) => setPct({ ...pct, taxas: e.target.value })} />
           </div>
           {isPro && (
             <div className="space-y-1">
-              <Label htmlFor="pct-cf" className="text-xs">Custo fixo %</Label>
+              <Label htmlFor="pct-cf" className="flex items-center gap-1 text-xs">
+                Custo fixo %
+                <DicaTermo titulo="Custo fixo" faixa="Veja o guia em Configurações para achar o seu.">
+                  A fatia que ajuda a pagar as contas do mês (aluguel, luz, internet) mesmo sem vender.
+                </DicaTermo>
+              </Label>
               <Input id="pct-cf" inputMode="decimal" value={pct.custoFixo}
                 onChange={(e) => setPct({ ...pct, custoFixo: e.target.value })} />
             </div>

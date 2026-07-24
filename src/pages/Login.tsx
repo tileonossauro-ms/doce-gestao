@@ -39,13 +39,16 @@ export default function Login() {
         toast.success('Bem-vindo(a) de volta!')
       } else {
         if (senha !== confirmarSenha) throw new Error('As senhas não coincidem.')
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password: senha,
           options: { data: { nome } },
         })
         if (error) throw error
-        toast.success('Conta criada! Você já pode usar o Doce Gestão.')
+        // Com "Confirmar e-mail" desligado no Supabase, o signUp já devolve sessão e a pessoa
+        // entra direto. Com a confirmação ligada, não há sessão — aí avisamos pra checar o e-mail.
+        if (data.session) toast.success('Conta criada! Bem-vindo(a) ao Doce Gestão. 🍰')
+        else toast.success('Conta criada! Confirme pelo link enviado ao seu e-mail para entrar.')
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Algo deu errado.'
