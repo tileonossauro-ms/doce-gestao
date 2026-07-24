@@ -98,7 +98,7 @@ export default function PedidosKanban({
                           variant="outline" size="sm" className="mt-2 h-7 w-full"
                           onClick={(e) => { e.stopPropagation(); onBaixa(p) }}
                         >
-                          <HandCoins className="size-3.5" /> Dar baixa
+                          <HandCoins className="size-3.5" /> Receber pagamento
                         </Button>
                       )}
                       <p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground/70">

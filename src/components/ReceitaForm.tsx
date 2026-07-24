@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { usePlano } from '@/components/Pro'
+import Ajuda from '@/components/Ajuda'
 import { formatBRL, parseNum } from '@/lib/format'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -298,12 +299,13 @@ export default function ReceitaForm({
             </div>
           )}
         </div>
-        {isPro && (
-          <p className="text-xs text-muted-foreground">
-            Custo fixo % é a fatia do preço que ajuda a pagar aluguel, energia e as outras contas do mês.
-            O padrão vem de Configurações e você pode mudar receita a receita.
-          </p>
-        )}
+        <Ajuda id="calc-campos" titulo="O que colocar em cada campo?" padrao="fechado">
+          <p><strong>Custo indireto %</strong> — gastos da produção que não estão nos ingredientes: gás, luz, água. Ex.: 10%.</p>
+          <p><strong>Margem %</strong> — o seu lucro em cada venda. Ex.: 30%.</p>
+          <p><strong>Taxas %</strong> — o que a maquininha ou o app leva. Ex.: 5%.</p>
+          {isPro && <p><strong>Custo fixo %</strong> — a fatia que ajuda a pagar as contas do mês (aluguel, internet…) mesmo sem vender. O padrão vem de Configurações; veja lá o guia de como escolher esse número.</p>}
+          <p className="text-muted-foreground">Todos são % sobre o <strong>preço de venda</strong>, não sobre o custo. A conta detalhada aparece assim que você clica em Calcular.</p>
+        </Ajuda>
         <Button type="button" onClick={handleCalcular} disabled={calculando} className="w-full">
           {calculando ? <Loader2 className="animate-spin" /> : <Calculator />}
           Calcular preço

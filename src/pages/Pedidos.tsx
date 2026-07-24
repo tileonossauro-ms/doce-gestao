@@ -49,6 +49,10 @@ type Pedido = {
 const STATUS = ['novo', 'em produção', 'entregue']
 const LIMITE_DIVERGENCIA = 0.2
 
+// Rótulo capitalizado para exibir; o valor guardado no banco continua minúsculo.
+const ROTULO_STATUS: Record<string, string> = { 'novo': 'Novo', 'em produção': 'Em produção', 'entregue': 'Entregue' }
+const rotuloStatus = (s: string) => ROTULO_STATUS[s] ?? s
+
 function badgeStatus(s: string) {
   if (s === 'entregue') return 'border-green-300 bg-green-50 text-green-700'
   if (s === 'em produção') return 'border-amber-300 bg-amber-50 text-amber-700'
@@ -165,7 +169,7 @@ export default function Pedidos() {
               <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="todos">Todos os status</SelectItem>
-                {STATUS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                {STATUS.map((s) => <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>)}
               </SelectContent>
             </Select>
           )}
@@ -238,7 +242,7 @@ export default function Pedidos() {
                     <TableCell>
                       <Select value={p.status} onValueChange={(v) => mudarStatus(p, v)}>
                         <SelectTrigger size="sm" className={`w-36 ${badgeStatus(p.status)}`} aria-label="Mudar produção"><SelectValue /></SelectTrigger>
-                        <SelectContent>{STATUS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                        <SelectContent>{STATUS.map((s) => <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>)}</SelectContent>
                       </Select>
                     </TableCell>
                     <TableCell>
@@ -251,7 +255,7 @@ export default function Pedidos() {
                       <div className="flex justify-end gap-1">
                         {!pago && (
                           <Button variant="outline" size="sm" onClick={() => setBaixa(p)}>
-                            <HandCoins /> Dar baixa
+                            <HandCoins /> Receber pagamento
                           </Button>
                         )}
                         {pago && (
@@ -332,7 +336,7 @@ function BaixaDialog({ pedido, formas, onClose, onDone }: { pedido: Pedido | nul
     <Dialog open={!!pedido} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
-          <DialogTitle>Dar baixa no pagamento</DialogTitle>
+          <DialogTitle>Receber pagamento</DialogTitle>
           <DialogDescription>
             Confirmar o recebimento de {pedido ? formatBRL(pedido.valor_total) : ''}. Como o cliente pagou?
           </DialogDescription>
@@ -524,7 +528,7 @@ function PedidoForm({
           <Label>Status</Label>
           <Select value={status} onValueChange={setStatus}>
             <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>{STATUS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+            <SelectContent>{STATUS.map((s) => <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>)}</SelectContent>
           </Select>
         </div>
         <div className="space-y-2">

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { formatBRL, formatNum, parseNum } from '@/lib/format'
 import { usePlano } from '@/components/Pro'
+import Ajuda from '@/components/Ajuda'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -304,6 +305,16 @@ function CustoFixoAutomatico() {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <Ajuda id="guia-custo-fixo" titulo="Entenda o custo fixo % (como escolher o número)">
+          <p>Toda venda precisa ajudar a pagar as contas que existem <strong>mesmo quando você não vende</strong>: aluguel, luz, internet. O <strong>custo fixo %</strong> é a fatia de cada venda reservada para isso.</p>
+          <p><strong>A conta é simples:</strong> pegue quanto você gasta de contas fixas por mês e divida pelo quanto você espera vender no mês.</p>
+          <p className="rounded-md bg-background/70 px-3 py-2">
+            Exemplo: contas fixas de <strong>R$ 1.000/mês</strong> ÷ vendas esperadas de <strong>R$ 5.000/mês</strong> = <strong>20%</strong>.<br />
+            Então, de cada R$ 100 vendidos, R$ 20 vão para as contas do mês — e é esse 20% que entra no preço.
+          </p>
+          <p>Se você deixar no <strong>Automático</strong>, o sistema faz essa conta sozinho com os seus custos fixos cadastrados. Se o número der muito alto, é sinal de que as vendas ainda não cobrem as contas — aí o caminho é vender mais ou reduzir custo, não só subir o preço.</p>
+        </Ajuda>
+
         <div className="space-y-2">
           <Label htmlFor="cfg-modo">Modo</Label>
           <Select

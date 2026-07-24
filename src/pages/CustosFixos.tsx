@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, Search, Pencil, Trash2, Loader2, Receipt, Info } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, Loader2, Receipt } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
@@ -26,6 +26,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useSort, SortHead } from '@/components/SortHead'
+import Ajuda from '@/components/Ajuda'
 
 type Categoria = { id: string; nome: string; tipo: string }
 type CustoFixo = {
@@ -95,14 +96,11 @@ export default function CustosFixos() {
         <Button onClick={() => setCriar(true)}><Plus /> Novo custo fixo</Button>
       </div>
 
-      <div className="flex gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900">
-        <Info className="mt-0.5 size-4 shrink-0" />
-        <p>
-          <strong>Custo fixo</strong> é o que você paga todo mês mesmo sem vender nada: aluguel, energia, internet, assinaturas.
-          <strong> Custo variável</strong> é o que só existe quando há venda: ingredientes, embalagem, taxa da maquininha —
-          esses você lança no Financeiro, não aqui. O DRE usa esta lista para chegar no lucro líquido de verdade.
-        </p>
-      </div>
+      <Ajuda id="custos-fixos-o-que-e" titulo="O que é custo fixo (e o que não é)" padrao="fechado">
+        <p><strong>Custo fixo</strong> é o que você paga todo mês mesmo sem vender nada: aluguel, energia, internet, assinaturas.</p>
+        <p><strong>Custo variável</strong> é o que só existe quando há venda: ingredientes, embalagem, taxa da maquininha — esses você lança no Financeiro, não aqui.</p>
+        <p className="text-muted-foreground">O DRE usa esta lista para chegar no lucro líquido de verdade.</p>
+      </Ajuda>
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1">

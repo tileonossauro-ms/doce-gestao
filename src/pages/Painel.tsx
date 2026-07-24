@@ -108,7 +108,7 @@ export default function Painel() {
         ticket: varPct(atual.ticket, anterior.ticket),
       },
     }
-  }, [lancamentos, pedidos, inicio, inicioAnterior])
+  }, [lancamentos, inicio, inicioAnterior])
 
   // Gráfico 1: faturamento x lucro por semana
   const dadosSemana = useMemo(() => {

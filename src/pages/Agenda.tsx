@@ -107,6 +107,7 @@ export default function Agenda() {
     const eventos: Evento[] = []
     for (const p of pedidos) {
       if (!p.data_entrega) continue
+      if (p.status === 'entregue') continue // já entregue não é mais "a entregar"
       eventos.push({
         chave: 'e' + p.id, data: p.data_entrega, ordem: '00:00', tipo: 'entrega',
         titulo: `Entregar para ${p.cliente?.nome ?? 'cliente'}`,
