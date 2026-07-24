@@ -16,6 +16,7 @@ export type Perfil = {
   plano: 'basico' | 'pro'
   is_superadmin: boolean
   acesso_ate: string | null
+  onboarding_visto: boolean
 }
 
 type AuthContextType = {

@@ -47,6 +47,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import Tour from '@/components/Tour'
 
 const OPERACAO = [
   { titulo: 'Painel', url: '/painel', icone: LayoutDashboard },
@@ -223,6 +224,7 @@ export default function AppLayout() {
           </main>
         </SidebarInset>
       </SidebarProvider>
+      <Tour key={String(perfil?.onboarding_visto)} />
     </TooltipProvider>
   )
 }

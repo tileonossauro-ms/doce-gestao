@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Loader2, Save, RefreshCw, Wand2, KeyRound } from 'lucide-react'
+import { Loader2, Save, RefreshCw, Wand2, KeyRound, PlayCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
@@ -105,10 +105,21 @@ export default function Configuracoes() {
             <Input id="cfg-email" value={user?.email ?? ''} disabled />
             <p className="text-xs text-muted-foreground">O e-mail de acesso não pode ser alterado por aqui.</p>
           </div>
-          <Button onClick={salvarNome} disabled={salvandoPerfil}>
-            {salvandoPerfil ? <Loader2 className="animate-spin" /> : <Save />}
-            Salvar perfil
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={salvarNome} disabled={salvandoPerfil}>
+              {salvandoPerfil ? <Loader2 className="animate-spin" /> : <Save />}
+              Salvar perfil
+            </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const erro = await salvarPerfil({ onboarding_visto: false })
+                toast[erro ? 'error' : 'success'](erro ? 'Erro: ' + erro : 'Tour reiniciado — role até o topo se não aparecer.')
+              }}
+            >
+              <PlayCircle /> Ver o tour de novo
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
