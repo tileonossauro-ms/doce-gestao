@@ -26,6 +26,8 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useSort, SortHead } from '@/components/SortHead'
+import PedidosKanban from '@/components/PedidosKanban'
+import { Table2, KanbanSquare } from 'lucide-react'
 
 type Cliente = { id: string; nome: string }
 type Receita = { id: string; nome: string; preco_sugerido: number | null }
@@ -61,6 +63,13 @@ export default function Pedidos() {
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
   const [filtroStatus, setFiltroStatus] = useState('todos')
+  const [vista, setVista] = useState<'tabela' | 'kanban'>(() => {
+    try { return localStorage.getItem('doce-gestao:pedidos-vista') === 'kanban' ? 'kanban' : 'tabela' } catch { return 'tabela' }
+  })
+  function trocarVista(v: 'tabela' | 'kanban') {
+    setVista(v)
+    try { localStorage.setItem('doce-gestao:pedidos-vista', v) } catch { /* ignora */ }
+  }
   const [criar, setCriar] = useState(false)
   const [editando, setEditando] = useState<Pedido | null>(null)
   const [excluir, setExcluir] = useState<Pedido | null>(null)
@@ -97,6 +106,16 @@ export default function Pedidos() {
       return okBusca && okStatus
     })
   }, [pedidos, busca, filtroStatus])
+
+  // Kanban usa só a busca (as colunas já SÃO os status, então o filtro de status não se aplica).
+  const buscaFiltrados = useMemo(() => {
+    const t = busca.trim().toLowerCase()
+    if (!t) return pedidos
+    return pedidos.filter((p) => {
+      const nomes = (p.cliente?.nome ?? '') + ' ' + p.itens.map((i) => i.receita?.nome ?? '').join(' ')
+      return nomes.toLowerCase().includes(t)
+    })
+  }, [pedidos, busca])
 
   const { sorted, sort, toggle } = useSort(
     filtrados,
@@ -141,14 +160,35 @@ export default function Pedidos() {
             <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input className="pl-8" placeholder="Buscar por cliente ou receita..." value={busca} onChange={(e) => setBusca(e.target.value)} />
           </div>
-          <Select value={filtroStatus} onValueChange={setFiltroStatus}>
-            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os status</SelectItem>
-              {STATUS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          {vista === 'tabela' && (
+            <Select value={filtroStatus} onValueChange={setFiltroStatus}>
+              <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os status</SelectItem>
+                {STATUS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          )}
+          {/* Alterna entre lista e quadro (kanban). Lembra a preferência. */}
+          <div className="flex overflow-hidden rounded-md border">
+            <Button variant={vista === 'tabela' ? 'default' : 'ghost'} size="sm" className="rounded-none" onClick={() => trocarVista('tabela')}>
+              <Table2 /> Lista
+            </Button>
+            <Button variant={vista === 'kanban' ? 'default' : 'ghost'} size="sm" className="rounded-none" onClick={() => trocarVista('kanban')}>
+              <KanbanSquare /> Quadro
+            </Button>
+          </div>
         </div>
+      )}
+
+      {vista === 'kanban' && pedidos.length > 0 && (
+        <PedidosKanban
+          pedidos={buscaFiltrados}
+          colunas={STATUS}
+          onMover={(id, novo) => { const p = pedidos.find((x) => x.id === id); if (p) mudarStatus(p, novo) }}
+          onEditar={(p) => setEditando(pedidos.find((x) => x.id === p.id) ?? null)}
+          onBaixa={(p) => setBaixa(pedidos.find((x) => x.id === p.id) ?? null)}
+        />
       )}
 
       <div className="rounded-lg border">
