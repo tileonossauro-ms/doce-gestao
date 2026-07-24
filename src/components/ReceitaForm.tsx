@@ -207,7 +207,10 @@ export default function ReceitaForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="rec-rend">Rendimento (quantas unidades a receita faz)</Label>
+        <Label htmlFor="rec-rend" className="flex items-center gap-1">
+          Rendimento (quantas unidades a receita faz)
+          <DicaTermo titulo="Rendimento">Quantas unidades saem de uma receita inteira. Ex.: se a massa faz 30 brigadeiros, o rendimento é 30. É com isso que o sistema acha o custo de cada unidade.</DicaTermo>
+        </Label>
         <Input
           id="rec-rend"
           inputMode="decimal"

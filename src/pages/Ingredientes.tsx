@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { formatBRL, formatData, formatNum, parseNum } from '@/lib/format'
+import DicaTermo from '@/components/DicaTermo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -364,7 +365,10 @@ function IngredienteForm({
         )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="ing-min">Estoque mínimo (aviso de baixo)</Label>
+        <Label htmlFor="ing-min" className="flex items-center gap-1">
+          Estoque mínimo (aviso de baixo)
+          <DicaTermo titulo="Estoque mínimo">A quantidade mínima que você quer sempre ter. Quando o estoque cai abaixo disso, o item fica amarelo pra você lembrar de comprar. Deixe 0 se não quiser aviso.</DicaTermo>
+        </Label>
         <Input id="ing-min" inputMode="decimal" value={minimo} onChange={(e) => setMinimo(e.target.value)} placeholder="0 = sem aviso" />
         <p className="text-xs text-muted-foreground">Abaixo desse valor, o estoque aparece em amarelo. O estoque em si você ajusta pelo botão de caixa (📦) na lista.</p>
       </div>

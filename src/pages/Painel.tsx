@@ -8,6 +8,7 @@ import {
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { formatBRL, formatData, formatNum } from '@/lib/format'
+import DicaTermo from '@/components/DicaTermo'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -188,7 +189,7 @@ export default function Painel() {
         <Kpi destaque titulo="Faturamento" valor={formatBRL(kpis.faturamento)} trend={kpis.trend.faturamento} icone={<DollarSign className="size-5 text-primary" />} />
         <Kpi titulo="Lucro (entradas − saídas)" valor={formatBRL(kpis.lucro)} trend={kpis.trend.lucro} icone={<TrendingUp className="size-5 text-primary" />} cor={kpis.lucro < 0 ? 'text-red-600' : undefined} />
         <Kpi titulo="Pedidos" valor={String(kpis.nPedidos)} trend={kpis.trend.nPedidos} icone={<ClipboardList className="size-5 text-primary" />} />
-        <Kpi titulo="Ticket médio" valor={formatBRL(kpis.ticket)} trend={kpis.trend.ticket} icone={<Receipt className="size-5 text-primary" />} />
+        <Kpi titulo={<>Ticket médio <DicaTermo titulo="Ticket médio">Quanto cada pedido rende, em média. É o faturamento dividido pelo número de pedidos.</DicaTermo></>} valor={formatBRL(kpis.ticket)} trend={kpis.trend.ticket} icone={<Receipt className="size-5 text-primary" />} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -279,12 +280,12 @@ export default function Painel() {
 }
 
 function Kpi({ titulo, valor, icone, cor, trend, destaque }: {
-  titulo: string; valor: string; icone: React.ReactNode; cor?: string; trend?: number | null; destaque?: boolean
+  titulo: React.ReactNode; valor: string; icone: React.ReactNode; cor?: string; trend?: number | null; destaque?: boolean
 }) {
   return (
     <Card className={destaque ? 'border-primary/30 bg-primary/5' : undefined}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
+        <CardTitle className="flex items-center gap-1 text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
         {icone}
       </CardHeader>
       <CardContent>

@@ -3,6 +3,7 @@ import { Info } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { formatBRL, formatNum } from '@/lib/format'
+import DicaTermo from '@/components/DicaTermo'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -147,11 +148,11 @@ export default function Dre() {
             <Total titulo="(=) Receita bruta" valor={dre.receitaBruta} />
 
             {/* 2. DEDUÇÕES */}
-            <Secao titulo="2. Deduções da receita" />
+            <Secao titulo={<>2. Deduções da receita <DicaTermo titulo="Deduções">O que sai da venda antes de virar dinheiro seu: taxa do cartão/app, impostos e descontos dados ao cliente.</DicaTermo></>} />
             {dre.deducoesItens.length === 0
               ? <p className="py-1 pl-4 text-sm text-muted-foreground">Nenhuma dedução lançada no mês.</p>
               : dre.deducoesItens.map((d) => <Item key={d.nome} nome={d.nome} valor={-d.valor} recuo />)}
-            <Total titulo="(=) Receita líquida" valor={dre.receitaLiquida} />
+            <Total titulo={<>(=) Receita líquida <DicaTermo titulo="Receita líquida">O que realmente entrou no caixa depois de tirar as deduções (cartão, app, impostos). É a base pra calcular o lucro.</DicaTermo></>} valor={dre.receitaLiquida} />
 
             {/* 3. CUSTOS VARIÁVEIS */}
             <Secao titulo="3. Custos variáveis (produção)" />
@@ -209,8 +210,8 @@ export default function Dre() {
   )
 }
 
-function Secao({ titulo }: { titulo: string }) {
-  return <p className="mt-3 border-b pb-1 text-sm font-semibold text-muted-foreground first:mt-0">{titulo}</p>
+function Secao({ titulo }: { titulo: React.ReactNode }) {
+  return <p className="mt-3 flex items-center gap-1 border-b pb-1 text-sm font-semibold text-muted-foreground first:mt-0">{titulo}</p>
 }
 
 function Item({ nome, valor, recuo }: { nome: string; valor: number; recuo?: boolean }) {
@@ -223,7 +224,7 @@ function Item({ nome, valor, recuo }: { nome: string; valor: number; recuo?: boo
 }
 
 function Total({ titulo, valor, nota, sub, colorir }: {
-  titulo: string; valor: number; nota?: string; sub?: boolean; colorir?: boolean
+  titulo: React.ReactNode; valor: number; nota?: string; sub?: boolean; colorir?: boolean
 }) {
   const cor = colorir ? (valor >= 0 ? 'text-green-700' : 'text-red-600') : valor < 0 ? 'text-red-600' : ''
   return (
