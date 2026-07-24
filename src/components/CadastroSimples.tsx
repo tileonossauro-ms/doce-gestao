@@ -29,10 +29,12 @@ import { useSort, SortHead } from '@/components/SortHead'
 export type Campo = {
   key: string
   label: string
-  tipo?: 'text' | 'select'
+  tipo?: 'text' | 'select' | 'boolean'
   opcoes?: { value: string; label: string }[]
   placeholder?: string
   obrigatorio?: boolean
+  padrao?: string // valor inicial para registros novos (ex.: 'true' para booleano)
+  ajuda?: string  // dica pequena abaixo do campo
 }
 
 type Registro = Record<string, unknown> & { id: string; ativo?: boolean }
@@ -80,6 +82,7 @@ export default function CadastroSimples({
   const { sorted, sort, toggle } = useSort(filtrados, getVal, { key: primeiroCampo, dir: 'asc' })
 
   function rotuloOpcao(campo: Campo, valor: unknown) {
+    if (campo.tipo === 'boolean') return valor === true ? 'Sim' : 'Não'
     if (campo.tipo === 'select') return campo.opcoes?.find((o) => o.value === valor)?.label ?? String(valor ?? '—')
     return String(valor ?? '—')
   }
@@ -222,7 +225,10 @@ function Form({
     const init: Record<string, string> = {}
     for (const c of campos) {
       const v = registro?.[c.key]
-      init[c.key] = v != null ? String(v) : (c.tipo === 'select' ? (c.opcoes?.[0]?.value ?? '') : '')
+      if (v != null) init[c.key] = String(v)
+      else if (c.tipo === 'boolean') init[c.key] = c.padrao ?? 'false'
+      else if (c.tipo === 'select') init[c.key] = c.opcoes?.[0]?.value ?? ''
+      else init[c.key] = ''
     }
     return init
   })
@@ -236,7 +242,7 @@ function Form({
     }
     setSalvando(true)
     const payload: Record<string, unknown> = {}
-    for (const c of campos) payload[c.key] = valores[c.key]?.trim() || null
+    for (const c of campos) payload[c.key] = c.tipo === 'boolean' ? valores[c.key] === 'true' : (valores[c.key]?.trim() || null)
     if (temAtivo) payload.ativo = ativo
     const { error } = registro
       ? await supabase.from(tabela).update(payload).eq('id', registro.id)
@@ -260,6 +266,14 @@ function Form({
                 {c.opcoes?.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
               </SelectContent>
             </Select>
+          ) : c.tipo === 'boolean' ? (
+            <Select value={valores[c.key]} onValueChange={(v) => setValores((s) => ({ ...s, [c.key]: v }))}>
+              <SelectTrigger id={`f-${c.key}`}><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="true">Sim</SelectItem>
+                <SelectItem value="false">Não</SelectItem>
+              </SelectContent>
+            </Select>
           ) : (
             <Input
               id={`f-${c.key}`}
@@ -268,6 +282,7 @@ function Form({
               placeholder={c.placeholder}
             />
           )}
+          {c.ajuda && <p className="text-xs text-muted-foreground">{c.ajuda}</p>}
         </div>
       ))}
       {temAtivo && (

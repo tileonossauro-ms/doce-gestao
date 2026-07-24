@@ -309,19 +309,48 @@ export default function ReceitaForm({
           Calcular preço
         </Button>
 
-        {resultado && (
-          <div className="rounded-md border bg-background p-3 text-center">
-            <p className="text-xs text-muted-foreground">Preço sugerido por unidade</p>
-            <p className="text-3xl font-bold text-primary">{formatBRL(resultado.preco_sugerido)}</p>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Lucro de <span className="font-semibold text-foreground">{formatBRL(resultado.lucro_unidade)}</span> por unidade
-            </p>
-            <p className="mt-2 text-xs text-muted-foreground">
-              Custo direto {formatBRL(resultado.custo_direto)} · custo por unidade {formatBRL(resultado.custo_por_unidade)}
-              {resultado.custo_fixo_unidade > 0 && <> · {formatBRL(resultado.custo_fixo_unidade)} por unidade vão para as contas fixas</>}
-            </p>
-          </div>
-        )}
+        {resultado && (() => {
+          const indPct = parseNum(pct.indireto) || 0
+          const marPct = parseNum(pct.margem) || 0
+          const taxPct = parseNum(pct.taxas) || 0
+          const cfPct = parseNum(pct.custoFixo) || 0
+          const cu = resultado.custo_por_unidade
+          const indR = Math.round(cu * indPct) / 100          // custo indireto por unidade (R$)
+          const custoComInd = Math.round((cu + indR) * 100) / 100
+          const taxR = Math.round(resultado.preco_sugerido * taxPct) / 100
+          const Linha = ({ rotulo, valor, forte, cor }: { rotulo: string; valor: number; forte?: boolean; cor?: string }) => (
+            <div className={`flex items-center justify-between ${forte ? 'font-semibold' : ''}`}>
+              <span className={cor ?? 'text-muted-foreground'}>{rotulo}</span>
+              <span className={`tabular-nums ${cor ?? ''}`}>{formatBRL(valor)}</span>
+            </div>
+          )
+          return (
+            <div className="rounded-md border bg-background p-3">
+              <div className="text-center">
+                <p className="text-xs text-muted-foreground">Preço sugerido por unidade</p>
+                <p className="text-3xl font-bold text-primary">{formatBRL(resultado.preco_sugerido)}</p>
+              </div>
+
+              <div className="mt-3 space-y-1 border-t pt-3 text-sm">
+                <p className="mb-1 text-xs font-medium text-muted-foreground">Como esse preço é formado:</p>
+                <Linha rotulo="Ingredientes por unidade" valor={cu} />
+                <Linha rotulo={`+ Custo indireto (${indPct}%)`} valor={indR} />
+                <Linha rotulo="= Custo por unidade" valor={custoComInd} forte />
+                <div className="my-1 border-t" />
+                <Linha rotulo={`+ Margem / seu lucro (${marPct}%)`} valor={resultado.lucro_unidade} cor="text-green-700" />
+                <Linha rotulo={`+ Taxas (${taxPct}%)`} valor={taxR} />
+                {isPro && <Linha rotulo={`+ Custo fixo (${cfPct}%)`} valor={resultado.custo_fixo_unidade} />}
+                <div className="my-1 border-t" />
+                <Linha rotulo="= Preço de venda" valor={resultado.preco_sugerido} forte cor="text-primary" />
+              </div>
+
+              <p className="mt-3 text-xs text-muted-foreground">
+                Custo total dos ingredientes da receita: {formatBRL(resultado.custo_direto)}
+                {rendimento ? ` (rende ${rendimento} un)` : ''}. Margem, taxas e custo fixo são fatias do preço final de venda.
+              </p>
+            </div>
+          )
+        })()}
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

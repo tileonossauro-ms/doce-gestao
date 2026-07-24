@@ -20,6 +20,25 @@ export default function Categorias() {
             { value: 'ambos', label: 'Ambos' },
           ],
         },
+        {
+          key: 'grupo_dre',
+          label: 'Onde entra no resultado (DRE)',
+          tipo: 'select',
+          opcoes: [
+            { value: 'custo_variavel', label: 'Custo variável (muda conforme você vende)' },
+            { value: 'custo_fixo', label: 'Custo fixo (paga todo mês)' },
+            { value: 'deducao', label: 'Dedução da venda (taxa, imposto, comissão)' },
+            { value: 'investimento', label: 'Investimento (equipamento, reforma)' },
+          ],
+          ajuda: 'Define em qual linha do relatório de resultado (DRE) esta categoria aparece.',
+        },
+        {
+          key: 'conta_no_dre',
+          label: 'Entra na conta do DRE?',
+          tipo: 'boolean',
+          padrao: 'true',
+          ajuda: 'Deixe "Sim" na dúvida. Use "Não" só para não contar duas vezes (ex.: "Ingrediente" já entra pelo custo da receita).',
+        },
       ]}
     />
   )
