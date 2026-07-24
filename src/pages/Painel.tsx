@@ -14,7 +14,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 
-type Lancamento = { id: string; tipo: string; descricao: string | null; valor: number; data: string }
+type Lancamento = { id: string; tipo: string; descricao: string | null; valor: number; data: string; pedido_id: string | null }
 type Pedido = {
   id: string; status: string; data_entrega: string | null; flag_revisao: boolean
   cliente: { nome: string } | null; itens: { receita: { nome: string } | null }[]
@@ -84,10 +84,15 @@ export default function Painel() {
     // Calcula os 4 números para uma janela [de, ate).
     const janela = (de: string, ate: string) => {
       const lanc = lancamentos.filter((l) => l.data >= de && l.data < ate)
-      const faturamento = lanc.filter((l) => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0)
+      const entradas = lanc.filter((l) => l.tipo === 'entrada')
+      const faturamento = entradas.reduce((s, l) => s + l.valor, 0)
       const saidas = lanc.filter((l) => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0)
-      const nPedidos = pedidos.filter((p) => p.data_entrega && p.data_entrega >= de && p.data_entrega < ate).length
-      return { faturamento, lucro: faturamento - saidas, nPedidos, ticket: nPedidos > 0 ? faturamento / nPedidos : 0 }
+      // Pedido = venda paga, contada pela data do pagamento (regra 7). Cada lançamento de
+      // entrada vinculado a um pedido é um pedido — não importa se tem data de entrega.
+      const dePedido = entradas.filter((l) => l.pedido_id)
+      const nPedidos = dePedido.length
+      const fatPedidos = dePedido.reduce((s, l) => s + l.valor, 0)
+      return { faturamento, lucro: faturamento - saidas, nPedidos, ticket: nPedidos > 0 ? fatPedidos / nPedidos : 0 }
     }
     const amanha = diasAFrente(1)
     const atual = janela(inicio, amanha)
@@ -127,14 +132,14 @@ export default function Painel() {
     return buckets.map((b) => ({ ...b, faturamento: Math.round(b.faturamento * 100) / 100, lucro: Math.round(b.lucro * 100) / 100 }))
   }, [lancamentos, inicio, dias])
 
-  // Gráfico 2: pedidos por status (no período)
+  // Gráfico 2: pedidos por etapa de produção (retrato de agora — não descarta pedido sem data).
   const dadosStatus = useMemo(() => {
     const cont: Record<string, number> = { novo: 0, 'em produção': 0, entregue: 0 }
     for (const p of pedidos) {
-      if (p.data_entrega && p.data_entrega >= inicio && cont[p.status] != null) cont[p.status]++
+      if (cont[p.status] != null) cont[p.status]++
     }
     return Object.entries(cont).map(([status, qtd]) => ({ status, qtd }))
-  }, [pedidos, inicio])
+  }, [pedidos])
 
   // Precisa de atenção
   const hojeMMDD = hoje().slice(5)
