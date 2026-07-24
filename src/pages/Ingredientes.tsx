@@ -38,6 +38,7 @@ type Ingrediente = {
   estoque_minimo: number
   marca_id: string | null
   fornecedor_id: string | null
+  categoria_id: string | null
   atualizado_em: string
 }
 export type Opcao = { id: string; nome: string }
@@ -48,6 +49,7 @@ export default function Ingredientes() {
   const [lista, setLista] = useState<Ingrediente[]>([])
   const [marcas, setMarcas] = useState<Opcao[]>([])
   const [fornecedores, setFornecedores] = useState<Opcao[]>([])
+  const [categorias, setCategorias] = useState<Opcao[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
   const [criar, setCriar] = useState(false)
@@ -56,10 +58,11 @@ export default function Ingredientes() {
   const [movimentar, setMovimentar] = useState<Ingrediente | null>(null)
 
   const carregar = useCallback(async () => {
-    const [g, m, f] = await Promise.all([
+    const [g, m, f, c] = await Promise.all([
       supabase.from('ingredientes').select('*').order('nome'),
       supabase.from('marcas').select('id, nome').eq('ativo', true).order('nome'),
       supabase.from('fornecedores').select('id, nome').eq('ativo', true).order('nome'),
+      supabase.from('categorias_ingredientes').select('id, nome').eq('ativo', true).order('nome'),
     ])
     if (g.error) toast.error('Erro ao carregar: ' + g.error.message)
     setLista(((g.data as Ingrediente[]) ?? []).map((i) => ({
@@ -67,6 +70,7 @@ export default function Ingredientes() {
     })))
     setMarcas((m.data as Opcao[]) ?? [])
     setFornecedores((f.data as Opcao[]) ?? [])
+    setCategorias((c.data as Opcao[]) ?? [])
     setLoading(false)
   }, [])
 
@@ -79,9 +83,11 @@ export default function Ingredientes() {
     return t ? lista.filter((i) => i.nome.toLowerCase().includes(t)) : lista
   }, [lista, busca])
 
+  const nomeCategoria = (id: string | null) => categorias.find((c) => c.id === id)?.nome ?? '—'
+
   const { sorted, sort, toggle } = useSort(
     filtrados,
-    (i, k) => (i as unknown as Record<string, unknown>)[k],
+    (i, k) => (k === 'categoria' ? nomeCategoria(i.categoria_id) : (i as unknown as Record<string, unknown>)[k]),
     { key: 'nome', dir: 'asc' },
   )
 
@@ -110,6 +116,7 @@ export default function Ingredientes() {
           <TableHeader>
             <TableRow>
               <SortHead sortKey="nome" sort={sort} onSort={toggle}>Nome</SortHead>
+              <SortHead sortKey="categoria" sort={sort} onSort={toggle}>Categoria</SortHead>
               <SortHead sortKey="unidade" sort={sort} onSort={toggle}>Unidade</SortHead>
               <SortHead sortKey="custo_unitario" sort={sort} onSort={toggle} className="text-right">Custo unitário</SortHead>
               <SortHead sortKey="estoque_atual" sort={sort} onSort={toggle} className="text-right">Estoque</SortHead>
@@ -120,11 +127,11 @@ export default function Ingredientes() {
           <TableBody>
             {loading ? (
               Array.from({ length: 4 }).map((_, i) => (
-                <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
+                <TableRow key={i}><TableCell colSpan={7}><Skeleton className="h-6 w-full" /></TableCell></TableRow>
               ))
             ) : filtrados.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6}>
+                <TableCell colSpan={7}>
                   {lista.length === 0 ? (
                     <div className="flex flex-col items-center gap-3 py-12 text-center">
                       <ShoppingBasket className="size-8 text-muted-foreground" />
@@ -140,6 +147,7 @@ export default function Ingredientes() {
               sorted.map((i) => (
                 <TableRow key={i.id}>
                   <TableCell className="font-medium">{i.nome}</TableCell>
+                  <TableCell className="text-muted-foreground">{nomeCategoria(i.categoria_id)}</TableCell>
                   <TableCell>{i.unidade}</TableCell>
                   <TableCell className="text-right">
                     {i.custo_unitario != null ? formatBRL(i.custo_unitario) : <span className="text-amber-600">sem custo</span>}
@@ -166,7 +174,7 @@ export default function Ingredientes() {
             <DialogTitle>Novo ingrediente</DialogTitle>
             <DialogDescription>Cadastre um ingrediente com seu custo por unidade de medida.</DialogDescription>
           </DialogHeader>
-          <IngredienteForm marcas={marcas} fornecedores={fornecedores} onSaved={carregar} onClose={() => setCriar(false)} />
+          <IngredienteForm marcas={marcas} fornecedores={fornecedores} categorias={categorias} onSaved={carregar} onClose={() => setCriar(false)} />
         </DialogContent>
       </Dialog>
 
@@ -177,7 +185,7 @@ export default function Ingredientes() {
             <SheetDescription>Ao mudar o custo, a data de atualização é registrada.</SheetDescription>
           </SheetHeader>
           <div className="px-4 pb-6">
-            {editando && <IngredienteForm ingrediente={editando} marcas={marcas} fornecedores={fornecedores} onSaved={carregar} onClose={() => setEditando(null)} />}
+            {editando && <IngredienteForm ingrediente={editando} marcas={marcas} fornecedores={fornecedores} categorias={categorias} onSaved={carregar} onClose={() => setEditando(null)} />}
           </div>
         </SheetContent>
       </Sheet>
@@ -211,11 +219,12 @@ function BadgeEstoque({ i }: { i: Ingrediente }) {
 }
 
 function IngredienteForm({
-  ingrediente, marcas, fornecedores, onSaved, onClose,
+  ingrediente, marcas, fornecedores, categorias, onSaved, onClose,
 }: {
   ingrediente?: Ingrediente
   marcas: Opcao[]
   fornecedores: Opcao[]
+  categorias: Opcao[]
   onSaved: () => void
   onClose: () => void
 }) {
@@ -228,7 +237,29 @@ function IngredienteForm({
   const [minimo, setMinimo] = useState(ingrediente?.estoque_minimo?.toString() ?? '')
   const [marcaId, setMarcaId] = useState(ingrediente?.marca_id ?? 'nenhuma')
   const [fornecedorId, setFornecedorId] = useState(ingrediente?.fornecedor_id ?? 'nenhum')
+  // Categoria: lista local (para poder anexar uma recém-criada sem recarregar a página).
+  const [cats, setCats] = useState<Opcao[]>(categorias)
+  const [categoriaId, setCategoriaId] = useState(ingrediente?.categoria_id ?? 'nenhuma')
+  const [novaCatAberta, setNovaCatAberta] = useState(false)
+  const [novaCatNome, setNovaCatNome] = useState('')
+  const [salvandoCat, setSalvandoCat] = useState(false)
   const [salvando, setSalvando] = useState(false)
+
+  async function criarCategoria() {
+    if (!user) return
+    const n = novaCatNome.trim()
+    if (!n) return toast.error('Informe o nome da categoria.')
+    setSalvandoCat(true)
+    const { data, error } = await supabase.from('categorias_ingredientes')
+      .insert({ user_id: user.id, nome: n }).select('id, nome').single()
+    setSalvandoCat(false)
+    if (error || !data) return toast.error('Erro ao criar categoria: ' + (error?.message ?? '') + ' (talvez já exista)')
+    setCats((prev) => [...prev, data as Opcao].sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')))
+    setCategoriaId(data.id)          // já seleciona a nova
+    setNovaCatNome('')
+    setNovaCatAberta(false)
+    toast.success('Categoria criada e selecionada!')
+  }
 
   const t = parseNum(tamanho)
   const p = parseNum(preco)
@@ -249,6 +280,7 @@ function IngredienteForm({
       estoque_minimo: Number.isFinite(m) ? m : 0,
       marca_id: marcaId === 'nenhuma' ? null : marcaId,
       fornecedor_id: fornecedorId === 'nenhum' ? null : fornecedorId,
+      categoria_id: categoriaId === 'nenhuma' ? null : categoriaId,
     }
     let error
     if (ingrediente) {
@@ -269,6 +301,35 @@ function IngredienteForm({
         <Label htmlFor="ing-nome">Nome</Label>
         <Input id="ing-nome" value={nome} onChange={(e) => setNome(e.target.value)} placeholder="Ex.: Leite condensado" />
       </div>
+
+      <div className="space-y-2">
+        <Label>Categoria</Label>
+        <div className="flex items-center gap-2">
+          <Select value={categoriaId} onValueChange={setCategoriaId}>
+            <SelectTrigger className="flex-1"><SelectValue placeholder="Escolha a categoria" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nenhuma">Sem categoria</SelectItem>
+              {cats.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button type="button" variant="outline" size="sm" onClick={() => setNovaCatAberta((v) => !v)}>
+            <Plus /> Nova categoria
+          </Button>
+        </div>
+        {novaCatAberta && (
+          <div className="flex items-end gap-2 rounded-md border bg-muted/30 p-2">
+            <div className="flex-1 space-y-1">
+              <Label htmlFor="nova-cat" className="text-xs">Nome da nova categoria</Label>
+              <Input id="nova-cat" value={novaCatNome} onChange={(e) => setNovaCatNome(e.target.value)}
+                placeholder="Ex.: Frutas secas" onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); criarCategoria() } }} />
+            </div>
+            <Button type="button" size="sm" onClick={criarCategoria} disabled={salvandoCat}>
+              {salvandoCat ? <Loader2 className="animate-spin" /> : 'Salvar'}
+            </Button>
+          </div>
+        )}
+      </div>
+
       <div className="space-y-2">
         <Label htmlFor="ing-uni">Unidade de uso na receita</Label>
         <Select value={unidade} onValueChange={setUnidade}>
