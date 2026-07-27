@@ -145,7 +145,7 @@ export default function Dre() {
             <Secao titulo="1. Receita" />
             <Item nome="Vendas por encomenda (pedidos pagos)" valor={dre.recEncomendas} recuo />
             <Item nome="Vendas de balcão / avulsas" valor={dre.recAvulsas} recuo />
-            <Total titulo="(=) Receita bruta" valor={dre.receitaBruta} />
+            <Total titulo={<>(=) Receita bruta <DicaTermo titulo="Receita bruta">Tudo que você vendeu no mês, sem tirar nada ainda: encomendas pagas + vendas de balcão.</DicaTermo></>} valor={dre.receitaBruta} />
 
             {/* 2. DEDUÇÕES */}
             <Secao titulo={<>2. Deduções da receita <DicaTermo titulo="Deduções">O que sai da venda antes de virar dinheiro seu: taxa do cartão/app, impostos e descontos dados ao cliente.</DicaTermo></>} />
@@ -155,13 +155,13 @@ export default function Dre() {
             <Total titulo={<>(=) Receita líquida <DicaTermo titulo="Receita líquida">O que realmente entrou no caixa depois de tirar as deduções (cartão, app, impostos). É a base pra calcular o lucro.</DicaTermo></>} valor={dre.receitaLiquida} />
 
             {/* 3. CUSTOS VARIÁVEIS */}
-            <Secao titulo="3. Custos variáveis (produção)" />
+            <Secao titulo={<>3. Custos variáveis (produção) <DicaTermo titulo="Custos variáveis">Gastos que só existem quando você vende: ingredientes, embalagem, frete, gás. Vendeu mais, gastou mais.</DicaTermo></>} />
             <Item nome="Ingredientes das receitas vendidas" valor={-dre.custoIngredientes} recuo />
             {dre.variaveisItens.map((v) => <Item key={v.nome} nome={v.nome} valor={-v.valor} recuo />)}
             <Total titulo="(=) Subtotal de custos variáveis" valor={-dre.custosVariaveis} sub />
 
             {/* 4. CUSTOS FIXOS */}
-            <Secao titulo="4. Custos fixos (estrutura)" />
+            <Secao titulo={<>4. Custos fixos (estrutura) <DicaTermo titulo="Custos fixos">Contas que você paga todo mês mesmo sem vender: aluguel, luz, internet. Vêm do cadastro de Custos fixos.</DicaTermo></>} />
             {dre.fixosItens.length === 0
               ? <p className="py-1 pl-4 text-sm text-muted-foreground">Nenhum custo fixo vigente. Cadastre em Cadastros › Custos fixos.</p>
               : dre.fixosItens.map((c) => <Item key={c.nome} nome={c.nome} valor={-c.valor} recuo />)}
@@ -170,9 +170,9 @@ export default function Dre() {
             {/* 5. RESULTADO */}
             <Secao titulo="5. Resultado" />
             <Item nome="Custos totais (variáveis + fixos)" valor={-dre.custosTotais} recuo />
-            <Total titulo="(=) Lucro operacional" valor={dre.lucroOperacional} />
+            <Total titulo={<>(=) Lucro operacional <DicaTermo titulo="Lucro operacional">O que sobrou depois de pagar ingredientes e as contas do mês, mas antes de descontar investimentos (compra de equipamentos).</DicaTermo></>} valor={dre.lucroOperacional} />
             {dre.investimentos > 0 && <Item nome="(−) Investimentos em equipamentos" valor={-dre.investimentos} recuo />}
-            <Total titulo="(=) Lucro líquido do mês" valor={dre.lucroLiquido}
+            <Total titulo={<>(=) Lucro líquido do mês <DicaTermo titulo="Lucro líquido">É o que realmente sobrou pra você no fim do mês, depois de TUDO: ingredientes, contas fixas e investimentos. O número que importa.</DicaTermo></>} valor={dre.lucroLiquido}
               nota={dre.receitaBruta > 0 ? `margem líquida de ${formatNum(dre.pct, 1)}%` : undefined} colorir />
 
             {dre.receitaBruta === 0 && <p className="pt-3 text-sm text-muted-foreground">Nenhuma receita neste mês.</p>}

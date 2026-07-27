@@ -18,6 +18,7 @@ import {
   CakeSlice,
   LogOut,
   Crown,
+  HelpCircle,
   ChevronsUpDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -218,6 +219,12 @@ export default function AppLayout() {
             <span className="text-sm text-muted-foreground">
               Olá, <span className="font-medium text-foreground">{nome}</span> 🍰
             </span>
+            <NavLink
+              to="/como-usar"
+              className="ml-auto inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            >
+              <HelpCircle className="size-4" /> Como usar
+            </NavLink>
           </header>
           <main className="flex-1 p-4 md:p-6">
             <Outlet />

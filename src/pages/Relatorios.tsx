@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { AvisoPro, usePlano } from '@/components/Pro'
 import { formatBRL, formatData, formatNum } from '@/lib/format'
+import DicaTermo from '@/components/DicaTermo'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -301,9 +302,9 @@ export default function Relatorios() {
       {/* (1) Resumo */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Numero destaque titulo="Faturamento" valor={formatBRL(resumo.faturamento)} nota={`${resumo.pedidos} pedido(s) pago(s)`} />
-        <Numero titulo="Custo dos ingredientes" valor={formatBRL(resumo.custo)} nota="Custo travado na data da venda" />
+        <Numero titulo={<>Custo dos ingredientes <DicaTermo titulo="Custo dos ingredientes">Quanto os ingredientes das receitas vendidas custaram — travado no preço da época da venda, não no preço de hoje.</DicaTermo></>} valor={formatBRL(resumo.custo)} nota="Custo travado na data da venda" />
         <Numero
-          titulo="Margem (lucro bruto)"
+          titulo={<>Margem (lucro bruto) <DicaTermo titulo="Margem (lucro bruto)">O que sobra da venda depois de tirar só o custo dos ingredientes. Ainda não desconta as contas do mês (isso é o lucro líquido, no DRE).</DicaTermo></>}
           valor={formatBRL(resumo.margem)}
           nota={`${formatNum(resumo.margemPct, 1)}% do faturamento`}
           cor={resumo.margem < 0 ? 'text-red-600' : 'text-green-700'}
@@ -448,12 +449,12 @@ export default function Relatorios() {
 }
 
 function Numero({ titulo, valor, nota, cor, destaque }: {
-  titulo: string; valor: string; nota?: string; cor?: string; destaque?: boolean
+  titulo: React.ReactNode; valor: string; nota?: string; cor?: string; destaque?: boolean
 }) {
   return (
     <Card className={destaque ? 'border-primary/30 bg-primary/5' : undefined}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
+        <CardTitle className="flex items-center gap-1 text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
       </CardHeader>
       <CardContent>
         <p className={`font-bold ${destaque ? 'text-3xl' : 'text-2xl'} ${cor ?? ''}`}>{valor}</p>
