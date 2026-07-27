@@ -44,7 +44,18 @@ type Ingrediente = {
 }
 export type Opcao = { id: string; nome: string }
 
-const UNIDADES = ['g', 'ml', 'un', 'kg', 'L']
+// A receita sempre usa a unidade-base do tipo. kg/L só existem como conveniência na compra.
+const TIPOS = [
+  { base: 'g', rotulo: 'Peso (em gramas)' },
+  { base: 'ml', rotulo: 'Volume (em ml)' },
+  { base: 'un', rotulo: 'Unidade (contável)' },
+]
+/** Como a pessoa pode comprar, por tipo: cada opção traz o fator p/ converter à unidade-base. */
+function opcoesCompra(base: string): { u: string; f: number }[] {
+  if (base === 'g') return [{ u: 'kg', f: 1000 }, { u: 'g', f: 1 }]
+  if (base === 'ml') return [{ u: 'L', f: 1000 }, { u: 'ml', f: 1 }]
+  return [{ u: 'un', f: 1 }]
+}
 
 export default function Ingredientes() {
   const [lista, setLista] = useState<Ingrediente[]>([])
@@ -231,9 +242,15 @@ function IngredienteForm({
 }) {
   const { user } = useAuth()
   const [nome, setNome] = useState(ingrediente?.nome ?? '')
-  const [unidade, setUnidade] = useState(ingrediente?.unidade ?? 'un')
-  // Compra por embalagem: tamanho (na unidade de uso) + preço da embalagem.
-  const [tamanho, setTamanho] = useState(ingrediente?.tamanho_embalagem?.toString() ?? '')
+  const [unidade, setUnidade] = useState(ingrediente?.unidade ?? 'g') // unidade-base (g/ml/un)
+  // Compra: ela pode comprar em kg/L; guardamos o tamanho já convertido à base.
+  const [unidadeCompra, setUnidadeCompra] = useState(() => opcoesCompra(ingrediente?.unidade ?? 'g')[0].u)
+  const [tamanho, setTamanho] = useState(() => {
+    const te = ingrediente?.tamanho_embalagem
+    if (te == null) return ''
+    const f = opcoesCompra(ingrediente?.unidade ?? 'g')[0].f
+    return String(te / f)
+  })
   const [preco, setPreco] = useState(ingrediente?.preco_embalagem?.toString() ?? '')
   const [minimo, setMinimo] = useState(ingrediente?.estoque_minimo?.toString() ?? '')
   const [marcaId, setMarcaId] = useState(ingrediente?.marca_id ?? 'nenhuma')
@@ -262,10 +279,13 @@ function IngredienteForm({
     toast.success('Categoria criada e selecionada!')
   }
 
+  const opcoes = opcoesCompra(unidade)
+  const fator = opcoes.find((o) => o.u === unidadeCompra)?.f ?? 1
   const t = parseNum(tamanho)
   const p = parseNum(preco)
-  // custo por unidade de uso = preço da embalagem ÷ tamanho da embalagem
-  const custoUnit = Number.isFinite(t) && t > 0 && Number.isFinite(p) ? p / t : null
+  // tamanho convertido à unidade-base (ex.: 1 kg → 1000 g) e custo por unidade-base.
+  const tamanhoBase = Number.isFinite(t) && t > 0 ? t * fator : null
+  const custoUnit = tamanhoBase != null && Number.isFinite(p) ? p / tamanhoBase : null
 
   async function salvar() {
     if (!user) return
@@ -275,7 +295,7 @@ function IngredienteForm({
     const base = {
       nome: nome.trim(),
       unidade,
-      tamanho_embalagem: Number.isFinite(t) && t > 0 ? t : null,
+      tamanho_embalagem: tamanhoBase,
       preco_embalagem: Number.isFinite(p) ? p : null,
       custo_unitario: custoUnit,
       estoque_minimo: Number.isFinite(m) ? m : 0,
@@ -332,12 +352,14 @@ function IngredienteForm({
       </div>
 
       <div className="space-y-2">
-        <Label htmlFor="ing-uni">Unidade de uso na receita</Label>
-        <Select value={unidade} onValueChange={setUnidade}>
-          <SelectTrigger id="ing-uni" className="w-32"><SelectValue /></SelectTrigger>
-          <SelectContent>{UNIDADES.map((u) => <SelectItem key={u} value={u}>{u}</SelectItem>)}</SelectContent>
+        <Label htmlFor="ing-uni" className="flex items-center gap-1">Tipo de medida
+          <DicaTermo titulo="Tipo de medida">Como você mede esse item. <strong>Peso</strong> (chocolate, açúcar) → a receita usa em gramas. <strong>Volume</strong> (chantilly) → em ml. <strong>Unidade</strong> (ovo, caixa) → em unidades. Você compra em kg/L, mas na receita é sempre a medida pequena.</DicaTermo>
+        </Label>
+        <Select value={unidade} onValueChange={(v) => { setUnidade(v); setUnidadeCompra(opcoesCompra(v)[0].u) }}>
+          <SelectTrigger id="ing-uni" className="w-52"><SelectValue /></SelectTrigger>
+          <SelectContent>{TIPOS.map((t2) => <SelectItem key={t2.base} value={t2.base}>{t2.rotulo}</SelectItem>)}</SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">É como você usa na receita (g, ml, un…). Ex.: farinha em <strong>g</strong>.</p>
+        <p className="text-xs text-muted-foreground">Na receita, este ingrediente será sempre usado em <strong>{unidade}</strong>.</p>
       </div>
 
       <div className="rounded-md border bg-muted/30 p-3 space-y-3">
@@ -346,18 +368,28 @@ function IngredienteForm({
         </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="ing-tam" className="flex items-center gap-1">Tamanho da embalagem ({unidade})
-              <DicaTermo titulo="Tamanho da embalagem">Quanto vem no pacote, na mesma unidade da receita. Ex.: um pacote de açúcar de 1000 g → digite 1000.</DicaTermo>
+            <Label htmlFor="ing-tam" className="flex items-center gap-1">Tamanho da embalagem
+              <DicaTermo titulo="Tamanho da embalagem">Quanto vem no pacote. Escolha kg ou g do lado. Ex.: um pacote de <strong>1 kg</strong> → digite 1 e deixe em kg.</DicaTermo>
             </Label>
-            <Input id="ing-tam" inputMode="decimal" value={tamanho} onChange={(e) => setTamanho(e.target.value)} placeholder={`Ex.: 1000`} />
+            <div className="flex gap-2">
+              <Input id="ing-tam" inputMode="decimal" value={tamanho} onChange={(e) => setTamanho(e.target.value)} placeholder="Ex.: 1" />
+              {opcoes.length > 1 ? (
+                <Select value={unidadeCompra} onValueChange={setUnidadeCompra}>
+                  <SelectTrigger className="w-20"><SelectValue /></SelectTrigger>
+                  <SelectContent>{opcoes.map((o) => <SelectItem key={o.u} value={o.u}>{o.u}</SelectItem>)}</SelectContent>
+                </Select>
+              ) : (
+                <span className="flex items-center px-2 text-sm text-muted-foreground">{unidadeCompra}</span>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
             <Label htmlFor="ing-preco">Preço da embalagem (R$)</Label>
-            <Input id="ing-preco" inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} placeholder="Ex.: 5,00" />
+            <Input id="ing-preco" inputMode="decimal" value={preco} onChange={(e) => setPreco(e.target.value)} placeholder="Ex.: 40,00" />
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          Ex.: um pacote de <strong>1000 {unidade}</strong> por <strong>R$ 5,00</strong>. Na receita você usa a quantidade real (ex.: 400 {unidade}).
+          Ex.: um pacote de <strong>1 kg</strong> por <strong>R$ 40,00</strong>. Na receita você usa em <strong>{unidade}</strong> (ex.: 100 {unidade}).
         </p>
         {custoUnit != null && (
           <p className="text-sm">
