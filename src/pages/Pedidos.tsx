@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select'
 import { useSort, SortHead } from '@/components/SortHead'
 import PedidosKanban from '@/components/PedidosKanban'
+import DicaTermo from '@/components/DicaTermo'
 import { Table2, KanbanSquare } from 'lucide-react'
 
 type Cliente = { id: string; nome: string }
@@ -201,9 +202,9 @@ export default function Pedidos() {
             <TableRow>
               <SortHead sortKey="cliente" sort={sort} onSort={toggle}>Cliente</SortHead>
               <TableHead>Itens</TableHead>
-              <SortHead sortKey="valor_total" sort={sort} onSort={toggle} className="text-right">Valor</SortHead>
-              <SortHead sortKey="status" sort={sort} onSort={toggle}>Produção</SortHead>
-              <SortHead sortKey="status_pagamento" sort={sort} onSort={toggle}>Pagamento</SortHead>
+              <SortHead sortKey="valor_total" sort={sort} onSort={toggle} className="text-right" dica={<DicaTermo titulo="Valor">Total do pedido (soma dos itens). O ⚠️ aparece quando o valor foge muito do preço sugerido das receitas — vale conferir.</DicaTermo>}>Valor</SortHead>
+              <SortHead sortKey="status" sort={sort} onSort={toggle} dica={<DicaTermo titulo="Produção">Em que etapa está o pedido: Novo (a fazer), Em produção (fazendo) ou Entregue (pronto). Você pode mudar aqui ou arrastando no Quadro.</DicaTermo>}>Produção</SortHead>
+              <SortHead sortKey="status_pagamento" sort={sort} onSort={toggle} dica={<DicaTermo titulo="Pagamento">Se o cliente já pagou (Pago) ou ainda não (A Pagar). Ao receber, clique em "Receber pagamento".</DicaTermo>}>Pagamento</SortHead>
               <SortHead sortKey="data_entrega" sort={sort} onSort={toggle}>Entrega</SortHead>
               <TableHead className="text-right">Ações</TableHead>
             </TableRow>

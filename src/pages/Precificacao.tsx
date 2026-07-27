@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { formatBRL, parseNum } from '@/lib/format'
+import DicaTermo from '@/components/DicaTermo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -151,7 +152,9 @@ export default function Precificacao() {
         <CardHeader><CardTitle className="text-base">1. Escolha a margem de lucro</CardTitle></CardHeader>
         <CardContent className="flex flex-wrap items-end gap-3">
           <div className="space-y-2">
-            <Label htmlFor="pm-margem">Margem de lucro (%)</Label>
+            <Label htmlFor="pm-margem" className="flex items-center gap-1">Margem de lucro (%)
+              <DicaTermo titulo="Margem de lucro" faixa="Costuma ficar entre 30% e 60%.">O quanto você quer ganhar em cada venda. O sistema recalcula o preço de todas as receitas escolhidas com essa margem.</DicaTermo>
+            </Label>
             <Input id="pm-margem" inputMode="decimal" className="w-32" value={margem} onChange={(e) => setMargem(e.target.value)} />
           </div>
           <Button onClick={otimizar} disabled={loading}>
@@ -181,7 +184,7 @@ export default function Precificacao() {
               <TableHead className="text-right">Custo atual</TableHead>
               <TableHead className="text-right">Preço atual</TableHead>
               {previewMargem != null && <TableHead className="text-right">Preço novo</TableHead>}
-              {previewMargem != null && <TableHead className="text-right">Variação</TableHead>}
+              {previewMargem != null && <TableHead className="text-right"><span className="inline-flex items-center gap-1">Variação <DicaTermo titulo="Variação">Quanto o preço novo muda em relação ao atual. Verde sobe, vermelho desce.</DicaTermo></span></TableHead>}
             </TableRow>
           </TableHeader>
           <TableBody>

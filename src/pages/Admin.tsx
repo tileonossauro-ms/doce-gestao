@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { formatBRL, formatData } from '@/lib/format'
+import DicaTermo from '@/components/DicaTermo'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -121,7 +122,7 @@ export default function Admin() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Metrica titulo="Contas" valor={String(metricas.total)} icone={<Users className="size-5 text-primary" />} loading={loading} />
         <Metrica titulo="Pró / Básico" valor={`${metricas.pro} / ${metricas.basico}`} icone={<Crown className="size-5 text-primary" />} loading={loading} />
-        <Metrica titulo="MRR estimado" valor={formatBRL(metricas.mrr)} nota="por mês" icone={<DollarSign className="size-5 text-primary" />} loading={loading} />
+        <Metrica titulo={<>MRR estimado <DicaTermo titulo="MRR (receita recorrente)">Receita mensal recorrente: quanto entra por mês somando as assinaturas de todas as contas. É a estimativa pelos preços de referência.</DicaTermo></>} valor={formatBRL(metricas.mrr)} nota="por mês" icone={<DollarSign className="size-5 text-primary" />} loading={loading} />
         <Metrica titulo="Assinaturas vencidas" valor={String(metricas.pendentes)} icone={<CalendarClock className="size-5 text-primary" />} cor={metricas.pendentes > 0 ? 'text-red-600' : undefined} loading={loading} />
       </div>
 
@@ -221,12 +222,12 @@ export default function Admin() {
 }
 
 function Metrica({ titulo, valor, nota, icone, cor, loading }: {
-  titulo: string; valor: string; nota?: string; icone: React.ReactNode; cor?: string; loading: boolean
+  titulo: React.ReactNode; valor: string; nota?: string; icone: React.ReactNode; cor?: string; loading: boolean
 }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
+        <CardTitle className="flex items-center gap-1 text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
         {icone}
       </CardHeader>
       <CardContent>

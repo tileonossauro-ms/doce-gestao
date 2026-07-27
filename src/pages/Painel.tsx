@@ -188,7 +188,7 @@ export default function Painel() {
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Kpi destaque titulo={<>Faturamento <DicaTermo titulo="Faturamento">Todo o dinheiro que entrou no período (pedidos pagos + vendas avulsas). É a receita antes de descontar qualquer custo.</DicaTermo></>} valor={formatBRL(kpis.faturamento)} trend={kpis.trend.faturamento} icone={<DollarSign className="size-5 text-primary" />} />
         <Kpi titulo={<>Lucro (entradas − saídas) <DicaTermo titulo="Lucro">O que sobrou: tudo que entrou menos tudo que saiu no período. Se ficar vermelho, saiu mais do que entrou.</DicaTermo></>} valor={formatBRL(kpis.lucro)} trend={kpis.trend.lucro} icone={<TrendingUp className="size-5 text-primary" />} cor={kpis.lucro < 0 ? 'text-red-600' : undefined} />
-        <Kpi titulo="Pedidos" valor={String(kpis.nPedidos)} trend={kpis.trend.nPedidos} icone={<ClipboardList className="size-5 text-primary" />} />
+        <Kpi titulo={<>Pedidos <DicaTermo titulo="Pedidos">Quantos pedidos foram pagos no período. Conta pela data do pagamento, não pela entrega.</DicaTermo></>} valor={String(kpis.nPedidos)} trend={kpis.trend.nPedidos} icone={<ClipboardList className="size-5 text-primary" />} />
         <Kpi titulo={<>Ticket médio <DicaTermo titulo="Ticket médio">Quanto cada pedido rende, em média. É o faturamento dividido pelo número de pedidos.</DicaTermo></>} valor={formatBRL(kpis.ticket)} trend={kpis.trend.ticket} icone={<Receipt className="size-5 text-primary" />} />
       </div>
 

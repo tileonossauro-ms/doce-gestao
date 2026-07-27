@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/select'
 import { useSort, SortHead } from '@/components/SortHead'
 import Ajuda from '@/components/Ajuda'
+import DicaTermo from '@/components/DicaTermo'
 
 type Categoria = { id: string; nome: string; tipo: string }
 type CustoFixo = {
@@ -118,9 +119,9 @@ export default function CustosFixos() {
             <TableRow>
               <SortHead sortKey="nome" sort={sort} onSort={toggle}>Nome</SortHead>
               <SortHead sortKey="categoria" sort={sort} onSort={toggle}>Categoria</SortHead>
-              <SortHead sortKey="valor_mensal" sort={sort} onSort={toggle} className="text-right">Valor por mês</SortHead>
-              <SortHead sortKey="inicio" sort={sort} onSort={toggle}>Vigência</SortHead>
-              <SortHead sortKey="fim" sort={sort} onSort={toggle}>Situação</SortHead>
+              <SortHead sortKey="valor_mensal" sort={sort} onSort={toggle} className="text-right" dica={<DicaTermo titulo="Valor por mês">Quanto essa conta custa por mês. É esse valor que o DRE desconta como custo fixo.</DicaTermo>}>Valor por mês</SortHead>
+              <SortHead sortKey="inicio" sort={sort} onSort={toggle} dica={<DicaTermo titulo="Vigência">Desde quando (e até quando) você paga essa conta. Serve para o DRE de cada mês contar só os custos que valiam naquele mês.</DicaTermo>}>Vigência</SortHead>
+              <SortHead sortKey="fim" sort={sort} onSort={toggle} dica={<DicaTermo titulo="Situação">"Ativo" = você ainda paga. "Encerrado" = você preencheu a data em que parou de pagar (o histórico dos meses anteriores não muda).</DicaTermo>}>Situação</SortHead>
               <TableHead className="w-24 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>

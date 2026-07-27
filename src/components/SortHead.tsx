@@ -32,32 +32,37 @@ export function useSort<T>(
   return { sorted, sort, toggle }
 }
 
-/** Cabeçalho de coluna clicável, com seta de ordenação. */
+/** Cabeçalho de coluna clicável, com seta de ordenação. `dica` (opcional) fica FORA do
+ *  botão de ordenar — assim não aninha botão dentro de botão. */
 export function SortHead({
-  children, sortKey, sort, onSort, className,
+  children, sortKey, sort, onSort, className, dica,
 }: {
   children: React.ReactNode
   sortKey: string
   sort: SortState
   onSort: (key: string) => void
   className?: string
+  dica?: React.ReactNode
 }) {
   const ativo = sort.key === sortKey
   return (
     <TableHead className={className}>
-      <button
-        type="button"
-        onClick={() => onSort(sortKey)}
-        className="-mx-1 inline-flex items-center gap-1 rounded px-1 hover:text-foreground"
-        title="Ordenar"
-      >
-        {children}
-        {ativo ? (
-          sort.dir === 'asc' ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />
-        ) : (
-          <ChevronsUpDown className="size-3.5 opacity-40" />
-        )}
-      </button>
+      <span className="inline-flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onSort(sortKey)}
+          className="-mx-1 inline-flex items-center gap-1 rounded px-1 hover:text-foreground"
+          title="Ordenar"
+        >
+          {children}
+          {ativo ? (
+            sort.dir === 'asc' ? <ChevronUp className="size-3.5" /> : <ChevronDown className="size-3.5" />
+          ) : (
+            <ChevronsUpDown className="size-3.5 opacity-40" />
+          )}
+        </button>
+        {dica}
+      </span>
     </TableHead>
   )
 }

@@ -119,8 +119,8 @@ export default function Ingredientes() {
               <SortHead sortKey="nome" sort={sort} onSort={toggle}>Nome</SortHead>
               <SortHead sortKey="categoria" sort={sort} onSort={toggle}>Categoria</SortHead>
               <SortHead sortKey="unidade" sort={sort} onSort={toggle}>Unidade</SortHead>
-              <SortHead sortKey="custo_unitario" sort={sort} onSort={toggle} className="text-right">Custo unitário</SortHead>
-              <SortHead sortKey="estoque_atual" sort={sort} onSort={toggle} className="text-right">Estoque</SortHead>
+              <SortHead sortKey="custo_unitario" sort={sort} onSort={toggle} className="text-right" dica={<DicaTermo titulo="Custo unitário">Quanto custa cada unidade do ingrediente (por grama, ml ou unidade). Vem do preço da embalagem dividido pelo tamanho dela.</DicaTermo>}>Custo unitário</SortHead>
+              <SortHead sortKey="estoque_atual" sort={sort} onSort={toggle} className="text-right" dica={<DicaTermo titulo="Estoque">Quanto você tem hoje desse ingrediente. Fica vermelho se negativo e amarelo se abaixo do estoque mínimo.</DicaTermo>}>Estoque</SortHead>
               <SortHead sortKey="atualizado_em" sort={sort} onSort={toggle}>Atualizado em</SortHead>
               <TableHead className="w-32 text-right">Ações</TableHead>
             </TableRow>
@@ -341,10 +341,14 @@ function IngredienteForm({
       </div>
 
       <div className="rounded-md border bg-muted/30 p-3 space-y-3">
-        <p className="text-sm font-medium">Como você compra</p>
+        <p className="flex items-center gap-1 text-sm font-medium">Como você compra
+          <DicaTermo titulo="Como você compra">Diga o tamanho do pacote e o preço que você pagou. O sistema divide um pelo outro e acha o custo por unidade sozinho — você não precisa fazer conta.</DicaTermo>
+        </p>
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
-            <Label htmlFor="ing-tam">Tamanho da embalagem ({unidade})</Label>
+            <Label htmlFor="ing-tam" className="flex items-center gap-1">Tamanho da embalagem ({unidade})
+              <DicaTermo titulo="Tamanho da embalagem">Quanto vem no pacote, na mesma unidade da receita. Ex.: um pacote de açúcar de 1000 g → digite 1000.</DicaTermo>
+            </Label>
             <Input id="ing-tam" inputMode="decimal" value={tamanho} onChange={(e) => setTamanho(e.target.value)} placeholder={`Ex.: 1000`} />
           </div>
           <div className="space-y-2">

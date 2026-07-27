@@ -301,7 +301,7 @@ export default function Relatorios() {
 
       {/* (1) Resumo */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Numero destaque titulo="Faturamento" valor={formatBRL(resumo.faturamento)} nota={`${resumo.pedidos} pedido(s) pago(s)`} />
+        <Numero destaque titulo={<>Faturamento <DicaTermo titulo="Faturamento">Total vendido no período (só pedidos pagos), antes de descontar qualquer custo.</DicaTermo></>} valor={formatBRL(resumo.faturamento)} nota={`${resumo.pedidos} pedido(s) pago(s)`} />
         <Numero titulo={<>Custo dos ingredientes <DicaTermo titulo="Custo dos ingredientes">Quanto os ingredientes das receitas vendidas custaram — travado no preço da época da venda, não no preço de hoje.</DicaTermo></>} valor={formatBRL(resumo.custo)} nota="Custo travado na data da venda" />
         <Numero
           titulo={<>Margem (lucro bruto) <DicaTermo titulo="Margem (lucro bruto)">O que sobra da venda depois de tirar só o custo dos ingredientes. Ainda não desconta as contas do mês (isso é o lucro líquido, no DRE).</DicaTermo></>}

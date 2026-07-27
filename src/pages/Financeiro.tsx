@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
 import { formatBRL, formatData, parseNum } from '@/lib/format'
+import DicaTermo from '@/components/DicaTermo'
 import Dre from '@/components/Dre'
 import { usePlano } from '@/components/Pro'
 import { Button } from '@/components/ui/button'
@@ -146,9 +147,9 @@ export default function Financeiro() {
       {isPro && aba === 'dre' ? <Dre /> : (
       <>
       <div className="grid gap-3 sm:grid-cols-3">
-        <CardKpi titulo="Entradas do mês" valor={doMes.entradas} icone={<ArrowUpCircle className="size-5 text-green-600" />} cor="text-green-600" loading={loading} />
-        <CardKpi titulo="Saídas do mês" valor={doMes.saidas} icone={<ArrowDownCircle className="size-5 text-red-600" />} cor="text-red-600" loading={loading} />
-        <CardKpi titulo="Saldo do mês" valor={doMes.saldo} icone={<Wallet className="size-5 text-primary" />} cor={doMes.saldo >= 0 ? 'text-foreground' : 'text-red-600'} loading={loading} />
+        <CardKpi titulo={<>Entradas do mês <DicaTermo titulo="Entradas">Todo dinheiro que entrou neste mês: pagamentos de pedidos e vendas avulsas.</DicaTermo></>} valor={doMes.entradas} icone={<ArrowUpCircle className="size-5 text-green-600" />} cor="text-green-600" loading={loading} />
+        <CardKpi titulo={<>Saídas do mês <DicaTermo titulo="Saídas">Todo dinheiro que saiu neste mês: compras, embalagem, gás, marketing e outros gastos.</DicaTermo></>} valor={doMes.saidas} icone={<ArrowDownCircle className="size-5 text-red-600" />} cor="text-red-600" loading={loading} />
+        <CardKpi titulo={<>Saldo do mês <DicaTermo titulo="Saldo">O que sobrou: entradas menos saídas do mês. Vermelho significa que saiu mais do que entrou.</DicaTermo></>} valor={doMes.saldo} icone={<Wallet className="size-5 text-primary" />} cor={doMes.saldo >= 0 ? 'text-foreground' : 'text-red-600'} loading={loading} />
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -290,11 +291,11 @@ export default function Financeiro() {
   )
 }
 
-function CardKpi({ titulo, valor, icone, cor, loading }: { titulo: string; valor: number; icone: React.ReactNode; cor: string; loading: boolean }) {
+function CardKpi({ titulo, valor, icone, cor, loading }: { titulo: React.ReactNode; valor: number; icone: React.ReactNode; cor: string; loading: boolean }) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
+        <CardTitle className="flex items-center gap-1 text-sm font-medium text-muted-foreground">{titulo}</CardTitle>
         {icone}
       </CardHeader>
       <CardContent>
@@ -359,7 +360,10 @@ function LancamentoForm({ lancamento, categorias, onSaved, onClose }: {
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-2">
-          <Label htmlFor="lan-cat">Categoria</Label>
+          <Label htmlFor="lan-cat" className="flex items-center gap-1">
+            Categoria
+            <DicaTermo titulo="Categoria">Organiza o gasto (aluguel, embalagem, marketing…). É o que separa custo fixo de variável no relatório de resultado (DRE).</DicaTermo>
+          </Label>
           <Select value={categoriaId} onValueChange={setCategoriaId}>
             <SelectTrigger id="lan-cat"><SelectValue /></SelectTrigger>
             <SelectContent>

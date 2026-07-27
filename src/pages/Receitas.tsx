@@ -25,6 +25,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { useSort, SortHead } from '@/components/SortHead'
+import DicaTermo from '@/components/DicaTermo'
 
 export default function Receitas() {
   const [receitas, setReceitas] = useState<Receita[]>([])
@@ -114,10 +115,10 @@ export default function Receitas() {
           <TableHeader>
             <TableRow>
               <SortHead sortKey="nome" sort={sort} onSort={toggle}>Nome</SortHead>
-              <SortHead sortKey="rendimento" sort={sort} onSort={toggle} className="text-right">Rendimento</SortHead>
-              <SortHead sortKey="custo_direto" sort={sort} onSort={toggle} className="text-right">Custo direto</SortHead>
-              <SortHead sortKey="preco_sugerido" sort={sort} onSort={toggle} className="text-right">Preço sugerido</SortHead>
-              <SortHead sortKey="status" sort={sort} onSort={toggle}>Status</SortHead>
+              <SortHead sortKey="rendimento" sort={sort} onSort={toggle} className="text-right" dica={<DicaTermo titulo="Rendimento">Quantas unidades a receita inteira faz. Ex.: uma massa que dá 30 brigadeiros tem rendimento 30.</DicaTermo>}>Rendimento</SortHead>
+              <SortHead sortKey="custo_direto" sort={sort} onSort={toggle} className="text-right" dica={<DicaTermo titulo="Custo direto">Quanto os ingredientes da receita custam ao todo (soma de cada ingrediente × quantidade usada).</DicaTermo>}>Custo direto</SortHead>
+              <SortHead sortKey="preco_sugerido" sort={sort} onSort={toggle} className="text-right" dica={<DicaTermo titulo="Preço sugerido">O preço de venda por unidade que a calculadora recomenda, já com seu lucro e as taxas embutidos.</DicaTermo>}>Preço sugerido</SortHead>
+              <SortHead sortKey="status" sort={sort} onSort={toggle} dica={<DicaTermo titulo="Status da receita">"Ativa" = já tem preço calculado e pode ser usada em pedidos. "Pendente" = falta calcular o preço (clique em Calcular na receita).</DicaTermo>}>Status</SortHead>
               <TableHead className="w-24 text-right">Ações</TableHead>
             </TableRow>
           </TableHeader>

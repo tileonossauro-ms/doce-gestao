@@ -6,6 +6,7 @@ import { useAuth } from '@/lib/auth'
 import { formatBRL, formatNum, parseNum } from '@/lib/format'
 import { usePlano } from '@/components/Pro'
 import Ajuda from '@/components/Ajuda'
+import DicaTermo from '@/components/DicaTermo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -133,27 +134,37 @@ export default function Configuracoes() {
         <CardContent className="space-y-4">
           <div className={`grid grid-cols-2 gap-3 ${isPro ? 'sm:grid-cols-4' : 'sm:grid-cols-3'}`}>
             <div className="space-y-2">
-              <Label htmlFor="cfg-ind">Custo indireto %</Label>
+              <Label htmlFor="cfg-ind" className="flex items-center gap-1">Custo indireto %
+                <DicaTermo titulo="Custo indireto" faixa="Costuma ficar entre 5% e 15%.">Gastos da produção que não estão nos ingredientes: gás, luz, água.</DicaTermo>
+              </Label>
               <Input id="cfg-ind" inputMode="decimal" value={indireto} onChange={(e) => setIndireto(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cfg-mar">Margem %</Label>
+              <Label htmlFor="cfg-mar" className="flex items-center gap-1">Margem %
+                <DicaTermo titulo="Margem" faixa="Costuma ficar entre 30% e 60%.">É o seu lucro em cada venda — o que sobra pra você.</DicaTermo>
+              </Label>
               <Input id="cfg-mar" inputMode="decimal" value={margem} onChange={(e) => setMargem(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="cfg-tax">Taxas %</Label>
+              <Label htmlFor="cfg-tax" className="flex items-center gap-1">Taxas %
+                <DicaTermo titulo="Taxas" faixa="Costuma ficar entre 2% e 6%.">O que a maquininha de cartão ou o app de entrega cobram de cada venda.</DicaTermo>
+              </Label>
               <Input id="cfg-tax" inputMode="decimal" value={taxas} onChange={(e) => setTaxas(e.target.value)} />
             </div>
             {isPro && (
               <div className="space-y-2">
-                <Label htmlFor="cfg-cf">Custo fixo %</Label>
+                <Label htmlFor="cfg-cf" className="flex items-center gap-1">Custo fixo %
+                  <DicaTermo titulo="Custo fixo" faixa="Veja o guia logo abaixo para achar o seu.">A fatia que ajuda a pagar as contas do mês (aluguel, luz, internet) mesmo sem vender.</DicaTermo>
+                </Label>
                 <Input id="cfg-cf" inputMode="decimal" value={custoFixo} onChange={(e) => setCustoFixo(e.target.value)} />
               </div>
             )}
           </div>
           {isPro && (
             <div className="space-y-2">
-              <Label htmlFor="cfg-est">Quanto você espera faturar por mês (R$)</Label>
+              <Label htmlFor="cfg-est" className="flex items-center gap-1">Quanto você espera faturar por mês (R$)
+                <DicaTermo titulo="Faturamento esperado">Um chute de quanto você vende por mês. Serve só para o cálculo automático do custo fixo quando ainda não há vendas registradas.</DicaTermo>
+              </Label>
               <Input id="cfg-est" inputMode="decimal" value={estimativa} onChange={(e) => setEstimativa(e.target.value)} placeholder="Opcional" />
               <p className="text-xs text-muted-foreground">
                 Usado só no cálculo automático abaixo, quando ainda não há vendas suficientes para estimar.
