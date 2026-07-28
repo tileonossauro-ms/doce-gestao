@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, Loader2, CalendarDays, Truck, Cake, CalendarClock, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Loader2, CalendarDays, Truck, ShoppingBag, Cake, CalendarClock, Pencil, Trash2, CheckCircle2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
@@ -24,7 +24,7 @@ const JANELA_DIAS = 30
 
 type Compromisso = { id: string; titulo: string; data: string; hora: string | null; observacao: string | null }
 type Pedido = {
-  id: string; status: string; data_entrega: string | null
+  id: string; status: string; tipo_entrega: string; data_entrega: string | null
   cliente: { nome: string } | null; itens: { receita: { nome: string } | null }[]
 }
 type Cliente = { id: string; nome: string; aniversario: string | null }
@@ -34,10 +34,11 @@ type Evento = {
   chave: string
   data: string
   ordem: string
-  tipo: 'entrega' | 'aniversario' | 'compromisso'
+  tipo: 'entrega' | 'retirada' | 'aniversario' | 'compromisso'
   titulo: string
   detalhe?: string
   compromisso?: Compromisso
+  pedidoId?: string
 }
 
 const hoje = () => new Date().toISOString().slice(0, 10)
@@ -68,6 +69,7 @@ function proximoAniversario(aniversario: string, de: string, ate: string): strin
 
 const CONFIG = {
   entrega: { icone: Truck, cor: 'border-blue-300 bg-blue-50 text-blue-700', rotulo: 'Entrega' },
+  retirada: { icone: ShoppingBag, cor: 'border-teal-300 bg-teal-50 text-teal-700', rotulo: 'Retirada' },
   aniversario: { icone: Cake, cor: 'border-pink-300 bg-pink-50 text-pink-700', rotulo: 'Aniversário' },
   compromisso: { icone: CalendarClock, cor: 'border-violet-300 bg-violet-50 text-violet-700', rotulo: 'Compromisso' },
 } as const
@@ -87,7 +89,7 @@ export default function Agenda() {
   const carregar = useCallback(async () => {
     const [k, p, c] = await Promise.all([
       supabase.from('compromissos').select('*').gte('data', de).lte('data', ate).order('data'),
-      supabase.from('pedidos').select('id, status, data_entrega, cliente:clientes(nome), itens:pedido_itens(receita:receitas(nome))')
+      supabase.from('pedidos').select('id, status, tipo_entrega, data_entrega, cliente:clientes(nome), itens:pedido_itens(receita:receitas(nome))')
         .gte('data_entrega', de).lte('data_entrega', ate),
       supabase.from('clientes').select('id, nome, aniversario'),
     ])
@@ -102,16 +104,27 @@ export default function Agenda() {
     carregar()
   }, [carregar])
 
+  // Marca o pedido como entregue direto da agenda (some da lista). Útil quando sai antes do dia.
+  async function concluir(pedidoId: string) {
+    setPedidos((prev) => prev.filter((p) => p.id !== pedidoId)) // otimista
+    const { error } = await supabase.from('pedidos').update({ status: 'entregue' }).eq('id', pedidoId)
+    if (error) { toast.error('Erro: ' + error.message); carregar() }
+    else toast.success('Pedido concluído! 🎉')
+  }
+
   // Junta as três fontes e agrupa por dia.
   const dias = useMemo(() => {
     const eventos: Evento[] = []
     for (const p of pedidos) {
       if (!p.data_entrega) continue
-      if (p.status === 'entregue') continue // já entregue não é mais "a entregar"
+      if (p.status === 'entregue') continue // já entregue não é mais "a fazer"
+      const retirada = p.tipo_entrega === 'retirada'
       eventos.push({
-        chave: 'e' + p.id, data: p.data_entrega, ordem: '00:00', tipo: 'entrega',
-        titulo: `Entregar para ${p.cliente?.nome ?? 'cliente'}`,
-        detalhe: `${itensResumo(p)} · ${p.status}`,
+        chave: 'e' + p.id, data: p.data_entrega, ordem: '00:00',
+        tipo: retirada ? 'retirada' : 'entrega',
+        titulo: retirada ? `Retirada — ${p.cliente?.nome ?? 'cliente'}` : `Entregar para ${p.cliente?.nome ?? 'cliente'}`,
+        detalhe: itensResumo(p),
+        pedidoId: p.id,
       })
     }
     for (const c of clientes) {
@@ -180,6 +193,11 @@ export default function Agenda() {
                         {ev.detalhe && <p className="truncate text-sm text-muted-foreground">{ev.detalhe}</p>}
                       </div>
                       <Badge variant="outline" className={cfg.cor}>{cfg.rotulo}</Badge>
+                      {ev.pedidoId && (
+                        <Button variant="outline" size="sm" onClick={() => concluir(ev.pedidoId!)}>
+                          <CheckCircle2 className="size-4" /> {ev.tipo === 'retirada' ? 'Retirado' : 'Entregue'}
+                        </Button>
+                      )}
                       {ev.compromisso && (
                         <div className="flex gap-1">
                           <Button variant="ghost" size="icon" onClick={() => setEditando(ev.compromisso!)} aria-label="Editar"><Pencil className="text-muted-foreground" /></Button>

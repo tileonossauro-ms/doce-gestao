@@ -39,6 +39,7 @@ type Pedido = {
   cliente_id: string | null
   status: string
   status_pagamento: string
+  tipo_entrega: string
   data_entrega: string | null
   flag_revisao: boolean
   valor_total: number
@@ -84,7 +85,7 @@ export default function Pedidos() {
     const [p, c, r, f] = await Promise.all([
       supabase
         .from('pedidos')
-        .select('id, cliente_id, status, status_pagamento, data_entrega, flag_revisao, valor_total, forma_pagamento_prevista, cliente:clientes(nome), itens:pedido_itens(quantidade, preco_unitario, receita:receitas(nome))')
+        .select('id, cliente_id, status, status_pagamento, tipo_entrega, data_entrega, flag_revisao, valor_total, forma_pagamento_prevista, cliente:clientes(nome), itens:pedido_itens(quantidade, preco_unitario, receita:receitas(nome))')
         .order('data_entrega', { ascending: false, nullsFirst: false }),
       supabase.from('clientes').select('id, nome').order('nome'),
       supabase.from('receitas').select('id, nome, preco_sugerido').order('nome'),
@@ -379,6 +380,7 @@ function PedidoForm({
   const { user } = useAuth()
   const [clienteId, setClienteId] = useState(pedido?.cliente_id ?? '')
   const [status, setStatus] = useState(pedido?.status ?? 'novo')
+  const [tipoEntrega, setTipoEntrega] = useState(pedido?.tipo_entrega ?? 'entrega')
   const [dataEntrega, setDataEntrega] = useState(pedido?.data_entrega ?? '')
   const [formaPrevista, setFormaPrevista] = useState(pedido?.forma_pagamento_prevista ?? '')
   const [itens, setItens] = useState<ItemForm[]>([{ receita_id: '', quantidade: '1', preco_unitario: '' }])
@@ -439,6 +441,7 @@ function PedidoForm({
     const cabecalho = {
       cliente_id: clienteId,
       status,
+      tipo_entrega: tipoEntrega,
       data_entrega: dataEntrega || null,
       forma_pagamento_prevista: formaPrevista || null,
       flag_revisao: flag,
@@ -533,13 +536,27 @@ function PedidoForm({
             <SelectContent>{STATUS.map((s) => <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>)}</SelectContent>
           </Select>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="ped-entrega" className="flex items-center gap-1">
-            Data de entrega
-            <DicaTermo titulo="Data de entrega">Quando você vai entregar. É por ela que o pedido aparece na sua Agenda como uma entrega. Obrigatória.</DicaTermo>
-          </Label>
-          <Input id="ped-entrega" type="date" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
-          <p className="text-xs text-muted-foreground">Aparece na Agenda nesse dia.</p>
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-2">
+            <Label htmlFor="ped-tipo" className="flex items-center gap-1">
+              Entrega ou retirada
+              <DicaTermo titulo="Entrega ou retirada">Entrega = você leva até o cliente. Retirada = o cliente vem buscar. Aparece com esse selo na Agenda.</DicaTermo>
+            </Label>
+            <Select value={tipoEntrega} onValueChange={setTipoEntrega}>
+              <SelectTrigger id="ped-tipo"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="entrega">Entrega (eu levo)</SelectItem>
+                <SelectItem value="retirada">Retirada (cliente busca)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="ped-entrega" className="flex items-center gap-1">
+              Data
+              <DicaTermo titulo="Data de entrega/retirada">O dia combinado. É por ela que o pedido aparece na sua Agenda. Obrigatória.</DicaTermo>
+            </Label>
+            <Input id="ped-entrega" type="date" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
+          </div>
         </div>
       </div>
 
