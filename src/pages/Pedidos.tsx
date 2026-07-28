@@ -431,6 +431,7 @@ function PedidoForm({
     if (!user) return
     if (!clienteId) return toast.error('Escolha o cliente.')
     if (validos.length === 0) return toast.error('Adicione ao menos um item válido (receita + quantidade).')
+    if (!dataEntrega) return toast.error('Informe a data de entrega — é ela que coloca o pedido na Agenda.')
 
     const flag = sugeridoTotal > 0 && Math.abs(valorTotal - sugeridoTotal) / sugeridoTotal > LIMITE_DIVERGENCIA
 
@@ -533,8 +534,12 @@ function PedidoForm({
           </Select>
         </div>
         <div className="space-y-2">
-          <Label htmlFor="ped-entrega">Data de entrega</Label>
+          <Label htmlFor="ped-entrega" className="flex items-center gap-1">
+            Data de entrega
+            <DicaTermo titulo="Data de entrega">Quando você vai entregar. É por ela que o pedido aparece na sua Agenda como uma entrega. Obrigatória.</DicaTermo>
+          </Label>
           <Input id="ped-entrega" type="date" value={dataEntrega} onChange={(e) => setDataEntrega(e.target.value)} />
+          <p className="text-xs text-muted-foreground">Aparece na Agenda nesse dia.</p>
         </div>
       </div>
 
