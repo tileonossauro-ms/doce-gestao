@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Plus, Search, Pencil, Trash2, ClipboardList, Loader2, HandCoins, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Plus, Search, Pencil, Trash2, ClipboardList, Loader2, HandCoins, AlertTriangle, CheckCircle2, Undo2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth'
@@ -41,6 +41,7 @@ type Pedido = {
   status_pagamento: string
   tipo_entrega: string
   data_entrega: string | null
+  entregue_em: string | null
   flag_revisao: boolean
   valor_total: number
   forma_pagamento_prevista: string | null
@@ -68,7 +69,7 @@ export default function Pedidos() {
   const [formas, setFormas] = useState<Forma[]>([])
   const [loading, setLoading] = useState(true)
   const [busca, setBusca] = useState('')
-  const [filtroStatus, setFiltroStatus] = useState('todos')
+  const [filtroStatus, setFiltroStatus] = useState('aberto') // por padrão, só os em aberto
   const [vista, setVista] = useState<'tabela' | 'kanban'>(() => {
     try { return localStorage.getItem('doce-gestao:pedidos-vista') === 'kanban' ? 'kanban' : 'tabela' } catch { return 'tabela' }
   })
@@ -76,6 +77,7 @@ export default function Pedidos() {
     setVista(v)
     try { localStorage.setItem('doce-gestao:pedidos-vista', v) } catch { /* ignora */ }
   }
+  const [aba, setAba] = useState<'aberto' | 'entregues'>('aberto')
   const [criar, setCriar] = useState(false)
   const [editando, setEditando] = useState<Pedido | null>(null)
   const [excluir, setExcluir] = useState<Pedido | null>(null)
@@ -85,7 +87,7 @@ export default function Pedidos() {
     const [p, c, r, f] = await Promise.all([
       supabase
         .from('pedidos')
-        .select('id, cliente_id, status, status_pagamento, tipo_entrega, data_entrega, flag_revisao, valor_total, forma_pagamento_prevista, cliente:clientes(nome), itens:pedido_itens(quantidade, preco_unitario, receita:receitas(nome))')
+        .select('id, cliente_id, status, status_pagamento, tipo_entrega, data_entrega, entregue_em, flag_revisao, valor_total, forma_pagamento_prevista, cliente:clientes(nome), itens:pedido_itens(quantidade, preco_unitario, receita:receitas(nome))')
         .order('data_entrega', { ascending: false, nullsFirst: false }),
       supabase.from('clientes').select('id, nome').order('nome'),
       supabase.from('receitas').select('id, nome, preco_sugerido').order('nome'),
@@ -103,21 +105,39 @@ export default function Pedidos() {
     carregar()
   }, [carregar])
 
+  // Aba "Em aberto": nunca mostra entregues; filtroStatus = 'aberto' (todos) / 'novo' / 'em produção'.
   const filtrados = useMemo(() => {
     const t = busca.trim().toLowerCase()
     return pedidos.filter((p) => {
+      if (p.status === 'entregue') return false
       const nomes = (p.cliente?.nome ?? '') + ' ' + p.itens.map((i) => i.receita?.nome ?? '').join(' ')
       const okBusca = !t || nomes.toLowerCase().includes(t)
-      const okStatus = filtroStatus === 'todos' || p.status === filtroStatus
+      const okStatus = filtroStatus === 'aberto' || p.status === filtroStatus
       return okBusca && okStatus
     })
   }, [pedidos, busca, filtroStatus])
 
-  // Kanban usa só a busca (as colunas já SÃO os status, então o filtro de status não se aplica).
+  // Aba "Entregues": só os concluídos, mais recentes primeiro.
+  const entregues = useMemo(() => {
+    const t = busca.trim().toLowerCase()
+    return pedidos
+      .filter((p) => {
+        if (p.status !== 'entregue') return false
+        if (!t) return true
+        const nomes = (p.cliente?.nome ?? '') + ' ' + p.itens.map((i) => i.receita?.nome ?? '').join(' ')
+        return nomes.toLowerCase().includes(t)
+      })
+      .sort((a, b) => (b.entregue_em ?? '').localeCompare(a.entregue_em ?? ''))
+  }, [pedidos, busca])
+
+  const nAbertos = useMemo(() => pedidos.filter((p) => p.status !== 'entregue').length, [pedidos])
+
+  // Kanban usa só a busca e nunca mostra os já entregues (some do quadro ao concluir).
   const buscaFiltrados = useMemo(() => {
     const t = busca.trim().toLowerCase()
-    if (!t) return pedidos
     return pedidos.filter((p) => {
+      if (p.status === 'entregue') return false
+      if (!t) return true
       const nomes = (p.cliente?.nome ?? '') + ' ' + p.itens.map((i) => i.receita?.nome ?? '').join(' ')
       return nomes.toLowerCase().includes(t)
     })
@@ -147,6 +167,14 @@ export default function Pedidos() {
     else toast.success(`Produção: ${novo}.`)
   }
 
+  /** Volta um pedido entregue para "em aberto" (novo). Reaparece na lista e na agenda. */
+  async function reabrir(p: Pedido) {
+    setPedidos((prev) => prev.map((x) => (x.id === p.id ? { ...x, status: 'novo', entregue_em: null } : x)))
+    const { error } = await supabase.from('pedidos').update({ status: 'novo' }).eq('id', p.id)
+    if (error) { toast.error('Erro ao reabrir: ' + error.message); carregar() }
+    else toast.success('Pedido reaberto — voltou para "em aberto".')
+  }
+
   const podeC = clientes.length > 0 && receitas.length > 0
 
   return (
@@ -161,6 +189,71 @@ export default function Pedidos() {
       )}
 
       {pedidos.length > 0 && (
+        <div className="flex gap-2">
+          <Button variant={aba === 'aberto' ? 'default' : 'outline'} size="sm" onClick={() => setAba('aberto')}>
+            Em aberto ({nAbertos})
+          </Button>
+          <Button variant={aba === 'entregues' ? 'default' : 'outline'} size="sm" onClick={() => setAba('entregues')}>
+            <CheckCircle2 /> Entregues ({entregues.length})
+          </Button>
+        </div>
+      )}
+
+      {aba === 'entregues' ? (
+        <>
+          {pedidos.length > 0 && (
+            <div className="relative max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input className="pl-8" placeholder="Buscar por cliente ou receita..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+            </div>
+          )}
+          <div className="rounded-lg border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Itens</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
+                  <TableHead>Tipo</TableHead>
+                  <TableHead>Entregue em</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entregues.length === 0 ? (
+                  <TableRow><TableCell colSpan={6}><p className="py-10 text-center text-sm text-muted-foreground">Nenhum pedido entregue ainda. Ao marcar um pedido como entregue, ele aparece aqui.</p></TableCell></TableRow>
+                ) : (
+                  entregues.map((p) => {
+                    const itensTxt = p.itens.map((i) => `${i.receita?.nome ?? '?'} ×${i.quantidade}`).join(', ')
+                    return (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium">{p.cliente?.nome ?? '—'}</TableCell>
+                        <TableCell className="max-w-[220px] truncate text-muted-foreground" title={itensTxt}>{itensTxt || '—'}</TableCell>
+                        <TableCell className="text-right tabular-nums">{formatBRL(p.valor_total)}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={p.tipo_entrega === 'retirada' ? 'border-teal-300 bg-teal-50 text-teal-700' : 'border-blue-300 bg-blue-50 text-blue-700'}>
+                            {p.tipo_entrega === 'retirada' ? 'Retirada' : 'Entrega'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{p.entregue_em ? formatData(p.entregue_em) : '—'}</TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <Button variant="outline" size="sm" onClick={() => reabrir(p)}><Undo2 className="size-4" /> Reabrir</Button>
+                            <Button variant="ghost" size="icon" onClick={() => setEditando(p)} aria-label="Editar"><Pencil className="text-muted-foreground" /></Button>
+                            <Button variant="ghost" size="icon" onClick={() => setExcluir(p)} aria-label="Excluir"><Trash2 className="text-muted-foreground" /></Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      ) : (
+      <>
+      {pedidos.length > 0 && (
         <div className="flex flex-wrap gap-2">
           <div className="relative flex-1 min-w-52">
             <Search className="absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -170,8 +263,9 @@ export default function Pedidos() {
             <Select value={filtroStatus} onValueChange={setFiltroStatus}>
               <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="todos">Todos os status</SelectItem>
-                {STATUS.map((s) => <SelectItem key={s} value={s}>{rotuloStatus(s)}</SelectItem>)}
+                <SelectItem value="aberto">Todos em aberto</SelectItem>
+                <SelectItem value="novo">Novo</SelectItem>
+                <SelectItem value="em produção">Em produção</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -197,6 +291,7 @@ export default function Pedidos() {
         />
       )}
 
+      {vista === 'tabela' && (
       <div className="rounded-lg border">
         <Table>
           <TableHeader>
@@ -274,6 +369,9 @@ export default function Pedidos() {
           </TableBody>
         </Table>
       </div>
+      )}
+      </>
+      )}
 
       <Dialog open={criar} onOpenChange={setCriar}>
         <DialogContent className="max-h-[90svh] overflow-y-auto sm:max-w-lg">
